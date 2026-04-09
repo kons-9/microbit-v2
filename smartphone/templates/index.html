@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLE Indoor Locator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #eee; }
+  .header { padding: 12px 16px; background: #16213e; display: flex; align-items: center; gap: 12px; }
+  .header h1 { font-size: 18px; flex: 1; }
+  #status { font-size: 13px; padding: 4px 10px; border-radius: 12px; background: #333; }
+  #status.connected { background: #0a6; color: #fff; }
+  button { padding: 8px 16px; border: none; border-radius: 6px; font-size: 14px;
+           cursor: pointer; background: #0f3460; color: #fff; }
+  button:hover { background: #1a5276; }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .canvas-wrap { display: flex; justify-content: center; padding: 16px; }
+  canvas { border: 2px solid #333; border-radius: 8px; background: #0f0f23; max-width: 100%; }
+  .info { padding: 0 16px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .info-card { background: #16213e; border-radius: 8px; padding: 12px; }
+  .info-card .label { font-size: 11px; color: #888; text-transform: uppercase; }
+  .info-card .value { font-size: 20px; font-weight: bold; margin-top: 4px; }
+  .mode-bar { padding: 8px 16px; display: flex; gap: 8px; }
+  .mode-btn { flex: 1; padding: 10px; text-align: center; border-radius: 6px;
+              border: 2px solid #333; background: transparent; color: #aaa; }
+  .mode-btn.active { border-color: #0a6; color: #0a6; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>BLE Indoor Locator</h1>
+  <span id="status">Disconnected</span>
+  <button id="connectBtn" onclick="connectBLE()">Connect</button>
+</div>
+
+<div class="mode-bar">
+  <button class="mode-btn active" id="modeAccuracy" onclick="setMode(0)">Accuracy</button>
+  <button class="mode-btn" id="modeResponsive" onclick="setMode(1)">Responsive</button>
+</div>
+
+<div class="canvas-wrap">
+  <canvas id="map" width="400" height="320"></canvas>
+</div>
+
+<div class="info">
+  <div class="info-card">
+    <div class="label">Position</div>
+    <div class="value" id="posValue">— , —</div>
+  </div>
+  <div class="info-card">
+    <div class="label">Confidence</div>
+    <div class="value" id="confValue">—</div>
+  </div>
+</div>
+
+<script>
+/* BLE GATT UUIDs (must match firmware) */
+const SERVICE_UUID     = '12345678-1234-5678-1234-56789abcdef0';
+const POSITION_CHAR    = '12345678-1234-5678-1234-56789abcdef1';
+const MODE_CHAR        = '12345678-1234-5678-1234-56789abcdef2';
+
+/* Room dimensions (meters) — must match firmware app_config.h */
+const ROOM_W = 10.0;
+const ROOM_H = 8.0;
+
+let device = null;
+let modeChar = null;
+const posHistory = [];
+const MAX_HISTORY = 50;
+
+/* Canvas setup */
+const canvas = document.getElementById('map');
+const ctx = canvas.getContext('2d');
+
+/* Known beacon positions */
+const beacons = [
+  { name: 'A', x: 1.0, y: 1.0 },
+  { name: 'B', x: 9.0, y: 1.0 },
+  { name: 'C', x: 5.0, y: 7.0 },
+  { name: 'D', x: 1.0, y: 7.0 },
+];
+
+function drawMap(pos) {
+  const W = canvas.width, H = canvas.height;
+  const PAD = 30;
+
+  ctx.clearRect(0, 0, W, H);
+
+  /* Grid */
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 0.5;
+  for (let gx = 0; gx <= ROOM_W; gx++) {
+    const px = PAD + (gx / ROOM_W) * (W - 2 * PAD);
+    ctx.beginPath(); ctx.moveTo(px, PAD); ctx.lineTo(px, H - PAD); ctx.stroke();
+  }
+  for (let gy = 0; gy <= ROOM_H; gy++) {
+    const py = PAD + (gy / ROOM_H) * (H - 2 * PAD);
+    ctx.beginPath(); ctx.moveTo(PAD, py); ctx.lineTo(W - PAD, py); ctx.stroke();
+  }
+
+  /* Room border */
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(PAD, PAD, W - 2 * PAD, H - 2 * PAD);
+
+  /* Axis labels */
+  ctx.fillStyle = '#666';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  for (let gx = 0; gx <= ROOM_W; gx += 2) {
+    const px = PAD + (gx / ROOM_W) * (W - 2 * PAD);
+    ctx.fillText(gx + 'm', px, H - 10);
+  }
+  ctx.textAlign = 'right';
+  for (let gy = 0; gy <= ROOM_H; gy += 2) {
+    const py = PAD + (gy / ROOM_H) * (H - 2 * PAD);
+    ctx.fillText(gy + 'm', PAD - 6, py + 3);
+  }
+
+  const toPixel = (mx, my) => [
+    PAD + (mx / ROOM_W) * (W - 2 * PAD),
+    PAD + (my / ROOM_H) * (H - 2 * PAD)
+  ];
+
+  /* Beacons */
+  beacons.forEach(b => {
+    const [bx, by] = toPixel(b.x, b.y);
+    ctx.fillStyle = '#f39c12';
+    ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(b.name, bx, by - 10);
+  });
+
+  /* Position trail */
+  if (posHistory.length > 1) {
+    ctx.strokeStyle = 'rgba(0, 170, 102, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    const [sx, sy] = toPixel(posHistory[0].x, posHistory[0].y);
+    ctx.moveTo(sx, sy);
+    for (let i = 1; i < posHistory.length; i++) {
+      const [px, py] = toPixel(posHistory[i].x, posHistory[i].y);
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  /* Older dots */
+  posHistory.forEach((p, i) => {
+    if (i === posHistory.length - 1) return;
+    const [px, py] = toPixel(p.x, p.y);
+    const alpha = 0.15 + 0.6 * (i / posHistory.length);
+    ctx.fillStyle = `rgba(0, 170, 102, ${alpha})`;
+    ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2); ctx.fill();
+  });
+
+  /* Current position */
+  if (pos) {
+    const [px, py] = toPixel(pos.x, pos.y);
+    ctx.fillStyle = '#0f0';
+    ctx.shadowColor = '#0f0';
+    ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`(${pos.x.toFixed(1)}, ${pos.y.toFixed(1)})`, px, py - 14);
+  }
+}
+
+/* BLE connection */
+async function connectBLE() {
+  try {
+    device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [SERVICE_UUID] }],
+    });
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+
+    /* Position notifications */
+    const posChar = await service.getCharacteristic(POSITION_CHAR);
+    await posChar.startNotifications();
+    posChar.addEventListener('characteristicvaluechanged', onPosition);
+
+    /* Mode characteristic */
+    modeChar = await service.getCharacteristic(MODE_CHAR);
+
+    setStatus(true);
+  } catch (e) {
+    console.error('BLE connect failed:', e);
+    setStatus(false);
+  }
+}
+
+function onPosition(event) {
+  const dv = event.target.value;
+  if (dv.byteLength < 12) return;
+
+  const x    = dv.getFloat32(0, true);
+  const y    = dv.getFloat32(4, true);
+  const conf = dv.getFloat32(8, true);
+
+  posHistory.push({ x, y, conf });
+  if (posHistory.length > MAX_HISTORY) posHistory.shift();
+
+  document.getElementById('posValue').textContent =
+    `${x.toFixed(2)}, ${y.toFixed(2)}`;
+  document.getElementById('confValue').textContent =
+    `${(conf * 100).toFixed(1)}%`;
+
+  drawMap({ x, y, conf });
+}
+
+async function setMode(mode) {
+  document.getElementById('modeAccuracy').classList.toggle('active', mode === 0);
+  document.getElementById('modeResponsive').classList.toggle('active', mode === 1);
+  if (modeChar) {
+    const buf = new Uint8Array([mode]);
+    await modeChar.writeValue(buf);
+  }
+}
+
+function setStatus(connected) {
+  const el = document.getElementById('status');
+  el.textContent = connected ? 'Connected' : 'Disconnected';
+  el.classList.toggle('connected', connected);
+}
+
+/* Initial draw */
+drawMap(null);
+</script>
+</body>
+</html>
