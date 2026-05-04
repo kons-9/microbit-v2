@@ -34,4 +34,3 @@ target_link_options(app_main.elf PRIVATE
     -T${LINKER_SCRIPT}
     -Wl,-Map=app_main.map
 )
-target_link_libraries(app_main.elf PRIVATE kernel)
