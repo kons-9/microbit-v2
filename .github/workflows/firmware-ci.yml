@@ -1,4 +1,4 @@
-name: CI
+name: firmware-ci
 on:
   push:
     branches: [main, develop]
@@ -7,9 +7,20 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: setup ubuntu
+        run: |
+          sudo apt update
+          sudo apt install -y cmake build-essential wget unzip arm-none-eabi-gcc
+      - name: setup mtkernel
+        working-directory: ./firmware/kernel
+        run: |
+          PASSWORD=${{ secrets.ZIP_PASSWORD }}
+          wget https://www.personal-media.co.jp/book/tw/data/362_mbit_mtk3.zip
+          unzip -P $PASSWORD 362_mbit_mtk3.zip
+      - name: build firmware
+        working-directory: ./firmware
+        run: |
+          make build
