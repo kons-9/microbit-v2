@@ -1,0 +1,33 @@
+# microbit向けクロスコンパイル設定
+if(NOT DEFINED ARM_NONE_EABI_TOOLCHAIN_PATH)
+    if(DEFINED ENV{ARM_NONE_EABI_TOOLCHAIN_PATH})
+        set(ARM_NONE_EABI_TOOLCHAIN_PATH $ENV{ARM_NONE_EABI_TOOLCHAIN_PATH} CACHE PATH "Path to arm-none-eabi toolchain")
+    else()
+        set(ARM_NONE_EABI_TOOLCHAIN_PATH "" CACHE PATH "Path to arm-none-eabi toolchain")
+    endif()
+endif()
+
+if(ARM_NONE_EABI_TOOLCHAIN_PATH STREQUAL "")
+    find_program(ARM_NONE_EABI_GCC arm-none-eabi-gcc)
+    find_program(ARM_NONE_EABI_GXX arm-none-eabi-g++)
+else()
+    set(ARM_NONE_EABI_GCC "${ARM_NONE_EABI_TOOLCHAIN_PATH}/bin/arm-none-eabi-gcc")
+    set(ARM_NONE_EABI_GXX "${ARM_NONE_EABI_TOOLCHAIN_PATH}/bin/arm-none-eabi-g++")
+endif()
+
+if(NOT ARM_NONE_EABI_GCC OR NOT ARM_NONE_EABI_GXX)
+    message(FATAL_ERROR "arm-none-eabi toolchain not found. Install GNU Arm Embedded toolchain or set ARM_NONE_EABI_TOOLCHAIN_PATH to its root.")
+endif()
+
+set(CMAKE_SYSTEM_NAME Generic CACHE STRING "Target system name" FORCE)
+set(CMAKE_SYSTEM_PROCESSOR arm CACHE STRING "Target processor" FORCE)
+set(CMAKE_C_COMPILER "${ARM_NONE_EABI_GCC}" CACHE FILEPATH "C compiler" FORCE)
+set(CMAKE_CXX_COMPILER "${ARM_NONE_EABI_GXX}" CACHE FILEPATH "C++ compiler" FORCE)
+set(CMAKE_ASM_COMPILER ${CMAKE_C_COMPILER} CACHE FILEPATH "Assembler" FORCE)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
+set(MICROBIT_CPU_FLAGS "-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard")
+set(MICROBIT_COMMON_FLAGS "${MICROBIT_CPU_FLAGS} -ffunction-sections -fdata-sections -fno-common -Wall -Wextra")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MICROBIT_COMMON_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MICROBIT_COMMON_FLAGS} -fno-exceptions -fno-rtti")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections")

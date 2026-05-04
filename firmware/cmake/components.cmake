@@ -1,0 +1,2 @@
+add_subdirectory(components/template)
+add_subdirectory(kernel)

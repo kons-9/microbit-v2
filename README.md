@@ -3,6 +3,8 @@
 Bluetooth Low Energy(BLE)の受信信号強度(RSSI)を収集し、
 外部AIで機械学習ベースの位置推定を行う屋内測位アプリケーション。
 
+firmwareはwsl前提。
+
 ## 推定モード
 
 | モード | サンプル数 | 間隔 | スムージング | 用途 |
@@ -11,3 +13,20 @@ Bluetooth Low Energy(BLE)の受信信号強度(RSSI)を収集し、
 | **RESPONSIVE** | 1回 | 500ms | なし (α=1.0) | 応答性重視（リアルタイム追跡） |
 
 信頼度のトレンドに基づいて自動切替も行う。
+
+## build生成物
+buildは各コンポーネントごとにarchiveを作成する。
+BUILD_TYPEはDebug, Releaseを用意し、それぞれでディレクトリを作る。
+releaseはltoやO3でビルドする。どれだけ時間がかかっても構わない。
+
+```zsh
+cmake -B build -DTARGET_ARCH=linux -DAPP_TARGET=main
+cmake --build build
+```
+
+or 
+
+```zsh
+cmake -B build -DTARGET_ARCH=linux -DAPP_TARGET=factory-test
+cmake --build build
+```

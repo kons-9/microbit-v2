@@ -1,0 +1,32 @@
+################################################################################
+# kernel only build → libkernel.a
+################################################################################
+
+TARGET := _MICROBIT_
+
+RM := rm -rf
+
+INCPATH = -I"../include" -I"../config" -I"../kernel/knlinc"
+
+# ソース群（app除外）
+include mtkernel_3/lib/libtm/subdir.mk
+include mtkernel_3/lib/libtk/subdir.mk
+include mtkernel_3/kernel/tstdlib/subdir.mk
+include mtkernel_3/kernel/tkernel/subdir.mk
+include mtkernel_3/kernel/sysinit/subdir.mk
+include mtkernel_3/kernel/inittask/subdir.mk
+include mtkernel_3/device/subdir.mk
+
+# arch依存
+ifeq ($(TARGET), _MICROBIT_)
+include microbit.mk
+endif
+
+# ---- archive ----
+libtkernel.a: $(OBJS)
+	@echo "Archiving kernel library"
+	echo $@ $(OBJS)
+	$(AR) rcs $@ $(OBJS)
+
+clean:
+	$(RM) $(OBJS) libtkernel.a
