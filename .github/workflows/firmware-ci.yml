@@ -13,7 +13,7 @@ jobs:
       - name: setup ubuntu
         run: |
           sudo apt update
-          sudo apt install -y cmake build-essential wget unzip arm-none-eabi-gcc
+          sudo apt install -y cmake build-essential wget unzip gcc-arm-none-eabi
       - name: setup mtkernel
         working-directory: ./firmware/kernel
         run: |
