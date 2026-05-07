@@ -1,8 +1,8 @@
-add_executable(app_main
+add_executable(app_main.elf
     main.cpp
 )
 
-target_link_libraries(app_main
+target_link_libraries(app_main.elf
     PRIVATE
         template
 )
