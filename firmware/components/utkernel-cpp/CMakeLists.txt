@@ -14,11 +14,6 @@ target_include_directories(utkernel_cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/arch
 )
 
-# kernel依存（include/cのラッパーが#include_nextでカーネルヘッダーを参照する）
-if(TARGET kernel)
-    target_link_libraries(utkernel_cpp PUBLIC kernel)
-endif()
-
 if(NOT DEFINED TARGET_ARCH)
     message(FATAL_ERROR "TARGET_ARCH not set")
 endif()
