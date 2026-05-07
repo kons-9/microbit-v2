@@ -6,4 +6,3 @@
 #elif defined(TEMPLATE_ARCH_MICROBIT)
 #include "arch/microbit/template_microbit.h"
 #else
-

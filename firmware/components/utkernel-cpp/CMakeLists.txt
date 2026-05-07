@@ -23,18 +23,6 @@ if(NOT DEFINED TARGET_ARCH)
     message(FATAL_ERROR "TARGET_ARCH not set")
 endif()
 
-if(TARGET_ARCH STREQUAL "linux")
-    target_sources(utkernel_cpp PRIVATE
-        src/arch/linux/template_linux.cpp
-    )
-elseif(TARGET_ARCH STREQUAL "microbit")
-    target_sources(utkernel_cpp PRIVATE
-        src/arch/microbit/template_microbit.cpp
-    )
-else()
-    message(FATAL_ERROR "Unknown TARGET_ARCH")
-endif()
-
 # 出力を同一ディレクトリに統一
 set_target_properties(utkernel_cpp PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/utkernel_cpp
