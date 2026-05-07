@@ -6,3 +6,4 @@ endif()
 
 add_library(utkernel_cpp INTERFACE)
 target_include_directories(utkernel_cpp INTERFACE include)
+target_link_libraries(utkernel_cpp INTERFACE kernel)

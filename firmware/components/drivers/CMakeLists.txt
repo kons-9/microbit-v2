@@ -1,0 +1,8 @@
+add_subdirectory(accelerometer)
+add_subdirectory(button)
+add_subdirectory(led)
+add_subdirectory(magnetometer)
+add_subdirectory(mic)
+add_subdirectory(speaker)
+add_subdirectory(temperature)
+add_subdirectory(touch)

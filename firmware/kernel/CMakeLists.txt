@@ -25,5 +25,9 @@ target_include_directories(kernel INTERFACE
 )
 target_compile_definitions(kernel INTERFACE
     TARGET_DIR=microbit
+    PROHIBIT_DEF_SIZE_T
+)
+target_compile_options(kernel INTERFACE
+    -include stddef.h
 )
 add_dependencies(kernel kernel_build)

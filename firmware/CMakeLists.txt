@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 # ==== アプリケーション選択（これだけ指定すればよい） ====
 set(APP_TARGET "main" CACHE STRING "Application target")
-set_property(CACHE APP_TARGET PROPERTY STRINGS main factory-test)
+set_property(CACHE APP_TARGET PROPERTY STRINGS main factory-test updater)
 
 option(ENABLE_LOG "log enable" ON)
 
@@ -30,6 +30,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_compile_definitions(${ARCH_DEFINITIONS})
 
 # ==== サブディレクトリ ====
+add_subdirectory(third_party)
 add_subdirectory(kernel)
 add_subdirectory(components)
 add_subdirectory(${APP_DIR})

@@ -30,3 +30,28 @@ or
 cmake -B build -DTARGET_ARCH=linux -DAPP_TARGET=factory-test
 cmake --build build
 ```
+
+## テスト
+
+各コンポーネントは `build_test` ディレクトリで単体テストをビルド・実行できる（linux のみ）。
+
+```zsh
+cd firmware/components/ble
+cmake -B build_test -DTARGET_ARCH=linux
+cmake --build build_test
+./build_test/ble/ble_test
+```
+
+```zsh
+cd firmware/components/osal
+cmake -B build_test -DTARGET_ARCH=linux
+cmake --build build_test
+./build_test/osal/osal_test
+```
+
+## フォーマット
+
+```zsh
+cd firmware
+make format
+```

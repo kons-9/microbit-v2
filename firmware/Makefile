@@ -1,8 +1,11 @@
 FIRMWARE:=build/apps/main/app_main.elf
 
-.PHONY: all build clean erase-flash flash $(FIRMWARE)
+.PHONY: all build clean erase-flash flash format $(FIRMWARE)
 
 all: flash
+
+format:
+	find apps components -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i
 
 build: $(FIRMWARE)
 

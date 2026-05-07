@@ -5,14 +5,13 @@ add_executable(app_main.elf
 target_link_libraries(app_main.elf
     PRIVATE
         template
-        kernel
+        utkernel_cpp
 )
 
 # リンカスクリプト
-set(LINKER_SCRIPT
-    ${CMAKE_SOURCE_DIR}/kernel/mtkernel_3/etc/linker/${TARGET_ARCH}/tkernel_map.ld
-)
+set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/linker/app.ld)
 target_link_options(app_main.elf PRIVATE
+    -L${CMAKE_SOURCE_DIR}/linker
     -T${LINKER_SCRIPT}
     -Wl,-Map=app_main.map
 )
