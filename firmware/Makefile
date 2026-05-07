@@ -27,5 +27,5 @@ flash: erase-flash build venv
 	pyocd flash $(FIRMWARE)
 
 $(FIRMWARE):
-	cmake -B build -DTARGET_ARCH=microbit -DAPP_TARGET=main -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	cmake -B build -DAPP_TARGET=main -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 	cmake --build build

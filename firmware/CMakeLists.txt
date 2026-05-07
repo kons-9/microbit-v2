@@ -1,36 +1,35 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(TARGET_ARCH "linux" CACHE STRING "Target architecture")
-set_property(CACHE TARGET_ARCH PROPERTY STRINGS linux microbit)
-
+# ==== アプリケーション選択（これだけ指定すればよい） ====
 set(APP_TARGET "main" CACHE STRING "Application target")
 set_property(CACHE APP_TARGET PROPERTY STRINGS main factory-test)
 
-if(NOT TARGET_ARCH STREQUAL "linux" AND NOT TARGET_ARCH STREQUAL "microbit")
-    message(FATAL_ERROR "TARGET_ARCH must be linux or microbit")
-endif()
+option(ENABLE_LOG "log enable" ON)
 
-if(TARGET_ARCH STREQUAL "microbit")
-    include(cmake/toolchain.cmake)
+# ==== app.cmake が TARGET_ARCH, ツールチェイン, ARCH_DEFINITIONS を定義 ====
+set(APP_DIR apps/${APP_TARGET})
+if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${APP_DIR}/app.cmake)
+    message(FATAL_ERROR "Unknown APP_TARGET=${APP_TARGET}")
+endif()
+include(${APP_DIR}/app.cmake)
+
+# app.cmake 事後条件チェック
+if(NOT DEFINED TARGET_ARCH)
+    message(FATAL_ERROR "${APP_DIR}/app.cmake must set TARGET_ARCH")
+endif()
+if(NOT DEFINED ARCH_DEFINITIONS)
+    message(FATAL_ERROR "${APP_DIR}/app.cmake must set ARCH_DEFINITIONS")
 endif()
 
 project(ble_locator LANGUAGES C CXX)
 
-message(STATUS "TARGET_ARCH=${TARGET_ARCH}")
-message(STATUS "APP_TARGET=${APP_TARGET}")
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-include(cmake/options.cmake)
-include(cmake/arch.cmake)
-include(cmake/components.cmake)
-include(cmake/app_selector.cmake)
+add_compile_definitions(${ARCH_DEFINITIONS})
 
-#add_executable(app_main.elf)
-
-set(LINKER_SCRIPT
-    ${CMAKE_SOURCE_DIR}/kernel/mtkernel_3/etc/linker/${TARGET_ARCH}/tkernel_map.ld
-)
-
-target_link_options(app_main.elf PRIVATE
-    -T${LINKER_SCRIPT}
-    -Wl,-Map=app_main.map
-)
+# ==== サブディレクトリ ====
+add_subdirectory(kernel)
+add_subdirectory(components)
+add_subdirectory(${APP_DIR})

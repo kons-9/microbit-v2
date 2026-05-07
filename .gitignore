@@ -7,3 +7,6 @@ venv
 firmware/kernel/362_mbit_mtk3.zip
 firmware/kernel/mtkernel_3
 firmware/erase-flash-done
+
+# osal test build
+firmware/components/osal/build_test/

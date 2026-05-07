@@ -1,3 +1,3 @@
-kernel/CMakeLists.txt  [error opening dir]
-
-0 directories, 1 file
+add_subdirectory(template)
+add_subdirectory(ble)
+add_subdirectory(utkernel-cpp)

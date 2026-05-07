@@ -6,6 +6,20 @@ on:
     branches: [main, develop]
 
 jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install clang-format-18
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18
+      - name: check format
+        run: |
+          find firmware -name '*.cpp' -o -name '*.h' -o -name '*.c' \
+            | grep -v 'firmware/kernel/' \
+            | xargs clang-format-18 --dry-run --Werror
+
   build:
     runs-on: ubuntu-latest
     steps:
