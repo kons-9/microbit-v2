@@ -1,0 +1,32 @@
+#pragma once
+
+#include <cstdint>
+#include <cstddef>
+
+namespace osal {
+
+class message_buffer {
+public:
+    message_buffer(size_t buf_size, size_t max_msg_size);
+    ~message_buffer();
+
+    message_buffer(const message_buffer&) = delete;
+    message_buffer& operator=(const message_buffer&) = delete;
+
+    bool send(const void* data, size_t size, uint32_t timeout_ms = UINT32_MAX);
+    size_t receive(void* data, size_t max_size, uint32_t timeout_ms = UINT32_MAX);
+
+private:
+    alignas(8) unsigned char storage_[256];
+};
+
+} // namespace osal
+
+// arch dispatch
+#if defined(OSAL_ARCH_linux)
+#include "arch/linux/msgbuf_impl.hpp"
+#elif defined(OSAL_ARCH_microbit)
+#include "arch/microbit/msgbuf_impl.hpp"
+#else
+#error "OSAL_ARCH not defined"
+#endif

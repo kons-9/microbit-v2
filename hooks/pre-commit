@@ -1,0 +1,49 @@
+#!/bin/bash
+# pre-commit hook: clang-format check on staged C/C++ files
+# Requires clang-format-18 for consistent formatting.
+
+CLANG_FORMAT="clang-format-18"
+
+# Fallback: allow unversioned clang-format if version matches
+if ! command -v "$CLANG_FORMAT" &> /dev/null; then
+    if command -v clang-format &> /dev/null; then
+        VERSION=$(clang-format --version | grep -oP '\d+' | head -1)
+        if [ "$VERSION" = "18" ]; then
+            CLANG_FORMAT="clang-format"
+        else
+            echo "ERROR: clang-format-18 required (found version $VERSION)."
+            echo "Install with: sudo apt install clang-format-18"
+            exit 1
+        fi
+    else
+        echo "ERROR: clang-format-18 not found. Install with: sudo apt install clang-format-18"
+        exit 1
+    fi
+fi
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|cpp|h)$' | grep -v '^firmware/kernel/')
+
+if [ -z "$STAGED_FILES" ]; then
+    exit 0
+fi
+
+FAILED=0
+for FILE in $STAGED_FILES; do
+    # Format the staged version and compare
+    DIFF=$(git show ":$FILE" | $CLANG_FORMAT --assume-filename="$FILE" | diff - <(git show ":$FILE"))
+    if [ -n "$DIFF" ]; then
+        echo "FORMAT ERROR: $FILE"
+        FAILED=1
+    fi
+done
+
+if [ $FAILED -ne 0 ]; then
+    echo ""
+    echo "Some files need formatting. Run:"
+    echo "  clang-format -i <file>"
+    echo "or to fix all staged files:"
+    echo "  git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(c|cpp|h)$' | grep -v '^firmware/kernel/' | xargs clang-format-18 -i"
+    exit 1
+fi
+
+exit 0
