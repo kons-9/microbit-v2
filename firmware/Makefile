@@ -5,7 +5,7 @@ FIRMWARE:=build/apps/main/app_main.elf
 all: flash
 
 format:
-	find apps components -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i
+	find apps components -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' | grep -v 'third_party/' | xargs clang-format-18 -i
 
 build: $(FIRMWARE)
 

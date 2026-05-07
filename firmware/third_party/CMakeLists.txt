@@ -6,6 +6,7 @@ if(TARGET_ARCH STREQUAL "microbit")
 
     set(NRFX_SOURCES
         ${NRFX_DIR}/drivers/src/nrfx_gpiote.c
+        ${NRFX_DIR}/drivers/src/nrfx_nvmc.c
         ${NRFX_DIR}/drivers/src/nrfx_pwm.c
         ${NRFX_DIR}/drivers/src/nrfx_saadc.c
         ${NRFX_DIR}/drivers/src/nrfx_twim.c

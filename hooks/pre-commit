@@ -21,7 +21,7 @@ if ! command -v "$CLANG_FORMAT" &> /dev/null; then
     fi
 fi
 
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|cpp|h)$' | grep -v '^firmware/kernel/')
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|cpp|h)$' | grep -v '^firmware/kernel/' | grep -v '^firmware/third_party/')
 
 if [ -z "$STAGED_FILES" ]; then
     exit 0

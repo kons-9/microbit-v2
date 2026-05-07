@@ -3,7 +3,6 @@ add_executable(app_updater.elf main.cpp)
 target_link_libraries(app_updater.elf PRIVATE
     ota
     ble
-    osal
     utkernel_cpp
 )
 

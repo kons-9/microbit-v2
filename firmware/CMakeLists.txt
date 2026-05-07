@@ -21,7 +21,7 @@ if(NOT DEFINED ARCH_DEFINITIONS)
     message(FATAL_ERROR "${APP_DIR}/app.cmake must set ARCH_DEFINITIONS")
 endif()
 
-project(ble_locator LANGUAGES C CXX)
+project(ble_locator LANGUAGES C CXX ASM)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

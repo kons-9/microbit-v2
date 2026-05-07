@@ -48,10 +48,10 @@ fail:
 
 /* ---- Entry Point ---- */
 
-EXPORT INT usermain(void) {
+extern "C" EXPORT INT usermain(void) {
     T_CTSK ctsk = {};
     ctsk.tskatr = TA_HLNG | TA_RNG3;
-    ctsk.task = updater_task;
+    ctsk.task = (FP)updater_task;
     ctsk.stksz = 2048;
     ctsk.itskpri = 10;
 
