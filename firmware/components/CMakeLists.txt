@@ -1,3 +1,5 @@
 add_subdirectory(template)
 add_subdirectory(ble)
+add_subdirectory(ota)
 add_subdirectory(utkernel-cpp)
+add_subdirectory(drivers)

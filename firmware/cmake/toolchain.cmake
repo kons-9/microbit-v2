@@ -30,4 +30,5 @@ set(MICROBIT_CPU_FLAGS "-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=ha
 set(MICROBIT_COMMON_FLAGS "${MICROBIT_CPU_FLAGS} -ffunction-sections -fdata-sections -fno-common -Wall -Wextra")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${MICROBIT_COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${MICROBIT_COMMON_FLAGS} -fno-exceptions -fno-rtti")
+set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} ${MICROBIT_CPU_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gc-sections")

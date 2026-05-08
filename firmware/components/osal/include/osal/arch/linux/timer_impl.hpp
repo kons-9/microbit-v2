@@ -13,13 +13,13 @@ namespace detail {
 struct linux_cyclic_ctx {
     timer_t timerid;
     cyclic_timer::handler_t handler;
-    void* param;
+    void *param;
     uint32_t interval_ms;
     bool running;
 };
 
 inline void cyclic_signal_handler(union sigval sv) {
-    auto* ctx = reinterpret_cast<linux_cyclic_ctx*>(sv.sival_ptr);
+    auto *ctx = reinterpret_cast<linux_cyclic_ctx *>(sv.sival_ptr);
     if (ctx->handler) {
         ctx->handler(ctx->param);
     }
@@ -28,25 +28,24 @@ inline void cyclic_signal_handler(union sigval sv) {
 struct linux_oneshot_ctx {
     timer_t timerid;
     oneshot_timer::handler_t handler;
-    void* param;
+    void *param;
     bool running;
 };
 
 inline void oneshot_signal_handler(union sigval sv) {
-    auto* ctx = reinterpret_cast<linux_oneshot_ctx*>(sv.sival_ptr);
+    auto *ctx = reinterpret_cast<linux_oneshot_ctx *>(sv.sival_ptr);
     if (ctx->handler) {
         ctx->handler(ctx->param);
     }
     ctx->running = false;
 }
-} // namespace detail
+}  // namespace detail
 
 // ===== cyclic_timer =====
 
-inline cyclic_timer::cyclic_timer(handler_t handler, uint32_t interval_ms, void* param) {
-    static_assert(sizeof(storage_) >= sizeof(detail::linux_cyclic_ctx),
-                  "storage too small for linux_cyclic_ctx");
-    auto* ctx = reinterpret_cast<detail::linux_cyclic_ctx*>(storage_);
+inline cyclic_timer::cyclic_timer(handler_t handler, uint32_t interval_ms, void *param) {
+    static_assert(sizeof(storage_) >= sizeof(detail::linux_cyclic_ctx), "storage too small for linux_cyclic_ctx");
+    auto *ctx = reinterpret_cast<detail::linux_cyclic_ctx *>(storage_);
     ctx->handler = handler;
     ctx->param = param;
     ctx->interval_ms = interval_ms;
@@ -62,13 +61,13 @@ inline cyclic_timer::cyclic_timer(handler_t handler, uint32_t interval_ms, void*
 }
 
 inline cyclic_timer::~cyclic_timer() {
-    auto* ctx = reinterpret_cast<detail::linux_cyclic_ctx*>(storage_);
+    auto *ctx = reinterpret_cast<detail::linux_cyclic_ctx *>(storage_);
     stop();
     timer_delete(ctx->timerid);
 }
 
 inline void cyclic_timer::start() {
-    auto* ctx = reinterpret_cast<detail::linux_cyclic_ctx*>(storage_);
+    auto *ctx = reinterpret_cast<detail::linux_cyclic_ctx *>(storage_);
     struct itimerspec its = {};
     its.it_value.tv_sec = ctx->interval_ms / 1000;
     its.it_value.tv_nsec = (ctx->interval_ms % 1000) * 1000000L;
@@ -78,7 +77,7 @@ inline void cyclic_timer::start() {
 }
 
 inline void cyclic_timer::stop() {
-    auto* ctx = reinterpret_cast<detail::linux_cyclic_ctx*>(storage_);
+    auto *ctx = reinterpret_cast<detail::linux_cyclic_ctx *>(storage_);
     if (ctx->running) {
         struct itimerspec its = {};
         timer_settime(ctx->timerid, 0, &its, nullptr);
@@ -88,10 +87,9 @@ inline void cyclic_timer::stop() {
 
 // ===== oneshot_timer =====
 
-inline oneshot_timer::oneshot_timer(handler_t handler, void* param) {
-    static_assert(sizeof(storage_) >= sizeof(detail::linux_oneshot_ctx),
-                  "storage too small for linux_oneshot_ctx");
-    auto* ctx = reinterpret_cast<detail::linux_oneshot_ctx*>(storage_);
+inline oneshot_timer::oneshot_timer(handler_t handler, void *param) {
+    static_assert(sizeof(storage_) >= sizeof(detail::linux_oneshot_ctx), "storage too small for linux_oneshot_ctx");
+    auto *ctx = reinterpret_cast<detail::linux_oneshot_ctx *>(storage_);
     ctx->handler = handler;
     ctx->param = param;
     ctx->running = false;
@@ -106,13 +104,13 @@ inline oneshot_timer::oneshot_timer(handler_t handler, void* param) {
 }
 
 inline oneshot_timer::~oneshot_timer() {
-    auto* ctx = reinterpret_cast<detail::linux_oneshot_ctx*>(storage_);
+    auto *ctx = reinterpret_cast<detail::linux_oneshot_ctx *>(storage_);
     stop();
     timer_delete(ctx->timerid);
 }
 
 inline void oneshot_timer::start(uint32_t delay_ms) {
-    auto* ctx = reinterpret_cast<detail::linux_oneshot_ctx*>(storage_);
+    auto *ctx = reinterpret_cast<detail::linux_oneshot_ctx *>(storage_);
     struct itimerspec its = {};
     its.it_value.tv_sec = delay_ms / 1000;
     its.it_value.tv_nsec = (delay_ms % 1000) * 1000000L;
@@ -122,7 +120,7 @@ inline void oneshot_timer::start(uint32_t delay_ms) {
 }
 
 inline void oneshot_timer::stop() {
-    auto* ctx = reinterpret_cast<detail::linux_oneshot_ctx*>(storage_);
+    auto *ctx = reinterpret_cast<detail::linux_oneshot_ctx *>(storage_);
     if (ctx->running) {
         struct itimerspec its = {};
         timer_settime(ctx->timerid, 0, &its, nullptr);
@@ -130,4 +128,4 @@ inline void oneshot_timer::stop() {
     }
 }
 
-} // namespace osal
+}  // namespace osal

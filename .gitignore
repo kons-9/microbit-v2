@@ -1,12 +1,10 @@
 build
-firmware/build/
-__pycache__/
-*.pyc
-venv
+build_test
 
 firmware/kernel/362_mbit_mtk3.zip
 firmware/kernel/mtkernel_3
 firmware/erase-flash-done
 
-# osal test build
-firmware/components/osal/build_test/
+__pycache__/
+*.pyc
+venv

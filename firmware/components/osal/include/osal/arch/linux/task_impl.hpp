@@ -12,12 +12,12 @@ namespace detail {
 struct linux_task_ctx {
     pthread_t thread;
     task::entry_t entry;
-    void* param;
+    void *param;
     bool joined;
 };
-} // namespace detail
+}  // namespace detail
 
-inline task::task(entry_t entry, const config& cfg) {
+inline task::task(entry_t entry, const config &cfg) {
     create(entry, cfg);
     start();
 }
@@ -28,10 +28,9 @@ inline task::~task() {
     }
 }
 
-inline bool task::create(entry_t entry, const config& cfg) {
-    static_assert(sizeof(storage_) >= sizeof(detail::linux_task_ctx),
-                  "storage too small for linux_task_ctx");
-    auto* ctx = reinterpret_cast<detail::linux_task_ctx*>(storage_);
+inline bool task::create(entry_t entry, const config &cfg) {
+    static_assert(sizeof(storage_) >= sizeof(detail::linux_task_ctx), "storage too small for linux_task_ctx");
+    auto *ctx = reinterpret_cast<detail::linux_task_ctx *>(storage_);
     ctx->entry = entry;
     ctx->param = cfg.param;
     ctx->joined = false;
@@ -41,24 +40,27 @@ inline bool task::create(entry_t entry, const config& cfg) {
 }
 
 inline bool task::start() {
-    if (!created_ || started_) return false;
-    auto* ctx = reinterpret_cast<detail::linux_task_ctx*>(storage_);
+    if (!created_ || started_)
+        return false;
+    auto *ctx = reinterpret_cast<detail::linux_task_ctx *>(storage_);
 
-    auto wrapper = [](void* arg) -> void* {
-        auto* c = reinterpret_cast<detail::linux_task_ctx*>(arg);
+    auto wrapper = [](void *arg) -> void * {
+        auto *c = reinterpret_cast<detail::linux_task_ctx *>(arg);
         c->entry(c->param);
         return nullptr;
     };
 
     int rc = pthread_create(&ctx->thread, nullptr, wrapper, ctx);
-    if (rc != 0) return false;
+    if (rc != 0)
+        return false;
     started_ = true;
     return true;
 }
 
 inline bool task::terminate() {
-    if (!started_) return false;
-    auto* ctx = reinterpret_cast<detail::linux_task_ctx*>(storage_);
+    if (!started_)
+        return false;
+    auto *ctx = reinterpret_cast<detail::linux_task_ctx *>(storage_);
     pthread_cancel(ctx->thread);
     pthread_join(ctx->thread, nullptr);
     ctx->joined = true;
@@ -81,8 +83,9 @@ inline bool task::joinable() const {
 }
 
 inline void task::join() {
-    if (!started_) return;
-    auto* ctx = reinterpret_cast<detail::linux_task_ctx*>(storage_);
+    if (!started_)
+        return;
+    auto *ctx = reinterpret_cast<detail::linux_task_ctx *>(storage_);
     if (!ctx->joined) {
         pthread_join(ctx->thread, nullptr);
         ctx->joined = true;
@@ -98,4 +101,4 @@ inline void task::yield() {
     sched_yield();
 }
 
-} // namespace osal
+}  // namespace osal

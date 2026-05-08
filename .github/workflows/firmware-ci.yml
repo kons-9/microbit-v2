@@ -18,12 +18,15 @@ jobs:
         run: |
           find firmware -name '*.cpp' -o -name '*.h' -o -name '*.c' \
             | grep -v 'firmware/kernel/' \
+            | grep -v 'firmware/third_party/' \
             | xargs clang-format-18 --dry-run --Werror
 
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: setup ubuntu
         run: |
           sudo apt update
@@ -34,7 +37,11 @@ jobs:
           PASSWORD=${{ secrets.ZIP_PASSWORD }}
           wget https://www.personal-media.co.jp/book/tw/data/362_mbit_mtk3.zip
           unzip -P $PASSWORD 362_mbit_mtk3.zip
-      - name: build firmware
+      - name: build main
         working-directory: ./firmware
         run: |
           make build
+      - name: build updater
+        working-directory: ./firmware
+        run: |
+          make build-updater
