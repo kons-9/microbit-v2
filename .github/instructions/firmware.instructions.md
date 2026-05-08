@@ -1,5 +1,5 @@
 ---
-applyTo: "**"
+applyTo: "firmware/**"
 ---
 
 # BLE Locator
@@ -15,6 +15,7 @@ BLE(Bluetooth Low Energy)のRSSIを複数ノードから収集し、
 
 ## 既知の注意事項
 - TDDで開発すること。テストコードも提出すること。
+- testはCatch2またはGoogleTestを使用すること
 - マイコン側はC++20
 
 （ここに開発中に見つけた注意事項を追記する）

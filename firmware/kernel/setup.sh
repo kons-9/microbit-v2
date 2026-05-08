@@ -63,4 +63,11 @@ fi
 # --- ZIPファイル削除 ---
 rm -f "$ZIP_FILE"
 
+# --- プロジェクト固有のコンフィグ適用 ---
+CONFIG_H="${EXPECTED_DIR}/config/config.h"
+echo "コンフィグをパッチ中: $CONFIG_H"
+
+# USE_TMONITOR を無効化 (UART0 をアプリ側で排他利用するため)
+sed -i 's/^#define[[:space:]]*USE_TMONITOR[[:space:]]*([[:digit:]])/#define\tUSE_TMONITOR\t\t(0)/' "$CONFIG_H"
+
 echo "セットアップ完了: $EXPECTED_DIR"

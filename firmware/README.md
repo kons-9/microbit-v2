@@ -7,50 +7,89 @@ micro:bit v2.2 (nRF52833) 向けファームウェア。μT-Kernel 3 RTOS 上で
 - `gcc-arm-none-eabi` (GNU Arm Embedded Toolchain)
 - CMake 3.16+
 - Python 3 + venv（書き込みに pyocd を使用）
-- `wget`, `unzip`
+- clang-format-18（コード整形）
 
 ## セットアップ
 
 ```bash
-# サブモジュール取得
 git submodule update --init --recursive
 
-# μT-Kernel 3 のダウンロード・展開（パスワードは下記URLを参照）
-# https://www.t-engine4u.com/info/mbit/2.html
-cd kernel
-./setup.sh
-cd ..
+# μT-Kernel 3 のダウンロード・展開
+# パスワード: https://www.t-engine4u.com/info/mbit/2.html
+cd kernel && ./setup.sh && cd ..
 ```
 
-## ビルド
+## コマンド一覧
+
+| コマンド | 説明 |
+|---|---|
+| `make build` | メインアプリをビルド |
+| `make build-updater` | OTA アップデータをビルド |
+| `make flash` | メインアプリを書き込み |
+| `make flash-updater` | アップデータを書き込み |
+| `make all` | flash + flash-updater |
+| `make clean` | ビルド成果物を削除 |
+| `make format` | clang-format-18 でソース整形 |
+| `make test` | 全ユニットテスト実行 (55件) |
+| `make test-<component>` | コンポーネント単位テスト (例: `make test-flash_fs`) |
+
+## テスト
+
+Catch2 v3 を使用。統合テストビルド（`test/CMakeLists.txt`）で Catch2 を一度だけコンパイルし、全テストで共有。
 
 ```bash
-# メインアプリ
-make build
-
-# アップデータ
-make build-updater
-
-# ビルド成果物を削除
-make clean
+make test              # 全テスト
+make test-osal         # osal だけ (22件)
+make test-flash_fs     # flash_fs だけ (13件)
+make test-shell        # shell だけ (9件)
+make test-signal       # signal だけ (6件)
+make test-flash_log    # flash_log だけ (4件)
+make test-template     # template だけ (1件)
 ```
 
-## 書き込み
-
+Python テスト（decode.py）:
 ```bash
-# メインアプリ + アップデータを書き込み（初回は自動でフラッシュ消去）
-make all
-
-# 個別に書き込み
-make flash
-make flash-updater
+cd components/log/tools && python3 -m pytest test_decode.py -v
 ```
 
-## フォーマット
+## アーキテクチャ
 
-```bash
-make format   # clang-format-18 でソースを整形
 ```
+apps/
+├── main/           BLE スキャン → RSSI 収集 → Flash 記録 → OTA 転送
+├── updater/        OTA ファームウェア書き込み
+└── factory-test/   ハードウェア検査
+
+components/         platform-independent ロジック + arch/ 層
+├── ble/            BLE GAP (scan/advertise)
+├── flash_fs/       NOR Flash ファイルシステム (stream + block)
+├── shell/          UART シェル (help/ls/cat/erase)
+├── log/            バイナリログ (flash_log) + テキストログ (log)
+├── signal/         EMA フィルタ / RSSI 集約
+├── osal/           RTOS 抽象化 (mutex/semaphore/task/timer)
+├── ota/            OTA 受信・検証・書き込み
+├── crash/          HardFault ハンドラ + crash info 永続化
+├── sysconfig/      メモリマップ定数
+├── drivers/        ハードウェアドライバ群
+└── utkernel-cpp/   μT-Kernel C ラッパーヘッダ
+
+kernel/             μT-Kernel 3 (setup.sh で取得)
+linker/             リンカスクリプト
+third_party/        nrfx, CMSIS
+test/               統合テストビルド (Catch2)
+```
+
+## メモリレイアウト (Flash 512KB)
+
+| 領域 | アドレス | サイズ |
+|---|---|---|
+| Application | `0x00000000` - `0x0006FFFF` | 448 KB |
+| Flash FS (log) | `0x00070000` - `0x00073FFF` | 16 KB (4 pages) |
+| Flash FS (config) | `0x00074000` - `0x00074FFF` | 4 KB (1 page) |
+| Flash FS (ota_staging) | `0x00075000` - `0x00077FFF` | 12 KB (3 pages) |
+| Updater | `0x00078000` - `0x0007DFFF` | 24 KB |
+| Settings | `0x0007E000` - `0x0007EFFF` | 4 KB |
+| MBR | `0x0007F000` - `0x0007FFFF` | 4 KB |
 
 ## Docker ビルド
 
@@ -58,45 +97,10 @@ make format   # clang-format-18 でソースを整形
 docker build --build-arg ZIP_PASSWORD=<パスワード> -t ble-locator-fw .
 ```
 
-## ディレクトリ構成
+## 命名規約
 
-```
-firmware/
-├── Makefile                 # ビルド・書き込みの統合ターゲット
-├── CMakeLists.txt           # トップレベル CMake（APP_TARGET で切替）
-├── Dockerfile               # Docker ビルド環境
-├── requirements.txt         # Python依存 (pyocd等)
-├── cmake/
-│   └── toolchain.cmake      # arm-none-eabi クロスコンパイル設定
-├── apps/
-│   ├── main/                # メインアプリケーション
-│   ├── updater/             # OTA アップデータ
-│   └── factory-test/        # 工場テスト
-├── components/              # ハードウェアドライバ・ミドルウェア
-├── kernel/                  # μT-Kernel 3 (setup.sh で取得)
-├── linker/                  # リンカスクリプト
-│   ├── memory_map.ld        # メモリレイアウト定義
-│   ├── app.ld               # メインアプリ用
-│   └── updater.ld           # アップデータ用
-└── third_party/             # 外部ライブラリ (nrfx, CMSIS)
-```
+Rust-like naming convention を採用。詳細は `.github/copilot-instructions.md` を参照。
 
-## メモリレイアウト (Flash 512KB)
-
-| 領域 | アドレス | サイズ |
-|---|---|---|
-| SoftDevice S140 | `0x00000000` - `0x00025FFF` | 152 KB |
-| Application | `0x00026000` - `0x0006DFFF` | 288 KB |
-| Updater | `0x0006E000` - `0x00077FFF` | 40 KB |
-| Bootloader | `0x00078000` - `0x0007EFFF` | 28 KB |
-| Settings | `0x0007F000` - `0x0007FFFF` | 4 KB |
-
-## アプリケーション切替
-
-`CMakeLists.txt` の `APP_TARGET` で対象アプリを選択:
-
-```bash
-cmake -B build -DAPP_TARGET=main          # メインアプリ (デフォルト)
-cmake -B build -DAPP_TARGET=updater       # アップデータ
-cmake -B build -DAPP_TARGET=factory-test  # 工場テスト
-```
+- 関数: `snake_case` (例: `flash_fs_init`, `ble_gap_discover`)
+- 型/struct/enum: `PascalCase` (例: `FlashFsFileInfo`, `BLEGapEvent`)
+- 定数/マクロ: `UPPER_SNAKE_CASE` (例: `PAGE_SIZE`, `LOG_E`)

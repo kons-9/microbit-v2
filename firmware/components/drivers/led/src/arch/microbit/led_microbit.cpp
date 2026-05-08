@@ -1,79 +1,90 @@
+/**
+ * @file led_microbit.cpp
+ * @brief micro:bit v2.2 LED 5x5 マトリクス GPIO 多重化実装
+ */
+
 #include "led.h"
+
 #include "nrf_gpio.h"
 
-// micro:bit v2.2 LED matrix pin definitions
-// ROW pins (active high)
-static const uint32_t row_pins[LED_ROWS] = {
-    NRF_GPIO_PIN_MAP(0, 21),  // ROW1
-    NRF_GPIO_PIN_MAP(0, 22),  // ROW2
-    NRF_GPIO_PIN_MAP(0, 15),  // ROW3
-    NRF_GPIO_PIN_MAP(0, 24),  // ROW4
-    NRF_GPIO_PIN_MAP(0, 19),  // ROW5
+/* ==================================================================
+ * Pin Definitions
+ * ================================================================== */
+
+static const uint32_t s_rowPins[LED_ROWS] = {
+    NRF_GPIO_PIN_MAP(0, 21),
+    NRF_GPIO_PIN_MAP(0, 22),
+    NRF_GPIO_PIN_MAP(0, 15),
+    NRF_GPIO_PIN_MAP(0, 24),
+    NRF_GPIO_PIN_MAP(0, 19),
 };
 
-// COL pins (active low)
-static const uint32_t col_pins[LED_COLS] = {
-    NRF_GPIO_PIN_MAP(0, 28),  // COL1
-    NRF_GPIO_PIN_MAP(0, 11),  // COL2
-    NRF_GPIO_PIN_MAP(0, 31),  // COL3
-    NRF_GPIO_PIN_MAP(1, 5),   // COL4
-    NRF_GPIO_PIN_MAP(0, 30),  // COL5
+static const uint32_t s_colPins[LED_COLS] = {
+    NRF_GPIO_PIN_MAP(0, 28),
+    NRF_GPIO_PIN_MAP(0, 11),
+    NRF_GPIO_PIN_MAP(0, 31),
+    NRF_GPIO_PIN_MAP(1, 5),
+    NRF_GPIO_PIN_MAP(0, 30),
 };
 
-// フレームバッファ: 各行のbit0-4がcol0-4に対応
-static uint8_t framebuf[LED_ROWS] = {0};
-static uint8_t current_row = 0;
+/* ==================================================================
+ * State
+ * ================================================================== */
+
+static uint8_t s_framebuf[LED_ROWS] = {0};
+static uint8_t s_currentRow = 0;
+
+/* ==================================================================
+ * API
+ * ================================================================== */
 
 void led_init(void) {
-    for (int i = 0; i < LED_ROWS; i++) {
-        nrf_gpio_cfg_output(row_pins[i]);
-        nrf_gpio_pin_clear(row_pins[i]);
+    for (int32_t i = 0; i < LED_ROWS; i++) {
+        nrf_gpio_cfg_output(s_rowPins[i]);
+        nrf_gpio_pin_clear(s_rowPins[i]);
     }
-    for (int i = 0; i < LED_COLS; i++) {
-        nrf_gpio_cfg_output(col_pins[i]);
-        nrf_gpio_pin_set(col_pins[i]);  // COL high = LED off
+    for (int32_t i = 0; i < LED_COLS; i++) {
+        nrf_gpio_cfg_output(s_colPins[i]);
+        nrf_gpio_pin_set(s_colPins[i]);
     }
-    current_row = 0;
+    s_currentRow = 0;
 }
 
 void led_set(uint8_t row, uint8_t col, bool on) {
-    if (row >= LED_ROWS || col >= LED_COLS)
+    if (row >= LED_ROWS || col >= LED_COLS) {
         return;
+    }
     if (on) {
-        framebuf[row] |= (1 << col);
+        s_framebuf[row] |= (1U << col);
     } else {
-        framebuf[row] &= ~(1 << col);
+        s_framebuf[row] &= ~(1U << col);
     }
 }
 
 void led_clear(void) {
-    for (int i = 0; i < LED_ROWS; i++) {
-        framebuf[i] = 0;
+    for (int32_t i = 0; i < LED_ROWS; i++) {
+        s_framebuf[i] = 0;
     }
 }
 
 void led_set_frame(const uint8_t bitmap[LED_ROWS]) {
-    for (int i = 0; i < LED_ROWS; i++) {
-        framebuf[i] = bitmap[i];
+    for (int32_t i = 0; i < LED_ROWS; i++) {
+        s_framebuf[i] = bitmap[i];
     }
 }
 
 void led_scan_tick(void) {
-    // 前の行を消す
-    nrf_gpio_pin_clear(row_pins[current_row]);
+    nrf_gpio_pin_clear(s_rowPins[s_currentRow]);
 
-    // 次の行へ
-    current_row = (current_row + 1) % LED_ROWS;
+    s_currentRow = static_cast<uint8_t>((s_currentRow + 1) % LED_ROWS);
 
-    // COLピンを設定
-    for (int c = 0; c < LED_COLS; c++) {
-        if (framebuf[current_row] & (1 << c)) {
-            nrf_gpio_pin_clear(col_pins[c]);  // COL low = LED on
+    for (int32_t c = 0; c < LED_COLS; c++) {
+        if (s_framebuf[s_currentRow] & (1U << c)) {
+            nrf_gpio_pin_clear(s_colPins[c]);
         } else {
-            nrf_gpio_pin_set(col_pins[c]);  // COL high = LED off
+            nrf_gpio_pin_set(s_colPins[c]);
         }
     }
 
-    // 行をアクティブにする
-    nrf_gpio_pin_set(row_pins[current_row]);
+    nrf_gpio_pin_set(s_rowPins[s_currentRow]);
 }

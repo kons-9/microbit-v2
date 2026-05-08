@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 add_library(ota STATIC)
 
 target_sources(ota PRIVATE
-    src/ota.c
+    src/ota.cpp
 )
 
 target_include_directories(ota

@@ -1,3 +1,6 @@
-#include "led.h"
+/**
+ * @file led.cpp
+ * @brief LED ドライバ共通部 (プラットフォーム非依存)
+ */
 
-// 共通ロジック（プラットフォーム非依存部分があればここに追加）
+#include "led.h"

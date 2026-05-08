@@ -1,9 +1,13 @@
-# component template
-## Linuxテスト
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
+# utkernel-cpp
 
-## firmware（microbit）
-cmake -B build/fw -DTARGET_ARCH=microbit
-cmake --build build/fw
+μT-Kernel 3 の C API を C++ から使うためのラッパーヘッダ。
+
+`gen_wrappers.sh` でカーネルヘッダから自動生成。
+
+## 使い方
+
+```cpp
+#include <c/tk/tkernel.h>
+```
+
+C++ ソースから `extern "C"` なしで μT-Kernel API を呼べる。

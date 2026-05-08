@@ -7,6 +7,10 @@ target_link_libraries(app_main.elf
         template
         utkernel_cpp
         crash
+        ble
+        beacon
+        shell
+        flash_fs
 )
 
 # リンカスクリプト

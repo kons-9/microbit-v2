@@ -12,18 +12,13 @@ micro:bit v2.2 の地磁気センサドライバ (LSM303AGR 磁気計部)。
 - WHO_AM_I: 0x40
 
 ## API
-- `mag_init()` - 初期化（I2C設定、WHO_AM_I確認）
-- `mag_read()` - 3軸磁場データ取得 (mGauss単位)
-- `mag_who_am_i()` - デバイスID確認 (期待値: 0x40)
-- `mag_heading()` - 方位角取得 (0-359度, 北=0)
+- `magnetometer_init()` - 初期化（I2C設定、WHO_AM_I確認）
+- `magnetometer_read()` - 3軸磁場データ取得 (mGauss単位)
+- `magnetometer_who_am_i()` - デバイスID確認 (期待値: 0x40)
+- `magnetometer_heading()` - 方位角取得 (0-359度, 北=0)
 
 ## 備考
 - I2Cバスは `accelerometer` コンポーネントと共有
 - 統合時にはI2Cバスマネージャ経由でアクセスする設計を想定
 
-## ビルド
-```
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
-```
+

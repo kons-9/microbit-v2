@@ -16,9 +16,4 @@ micro:bit v2.2 のタッチロゴドライバ。
 - ポーリング方式 (μT-Kernel `tk_dly_tsk` 使用)
 - 外部10Mohmプルアップにより非タッチ時HIGH
 
-## ビルド
-```
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
-```
+

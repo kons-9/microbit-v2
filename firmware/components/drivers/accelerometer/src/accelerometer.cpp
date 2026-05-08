@@ -1,3 +1,6 @@
-#include "accelerometer.h"
+/**
+ * @file accelerometer.cpp
+ * @brief 加速度センサドライバ共通部 (プラットフォーム非依存)
+ */
 
-// 共通ロジック（プラットフォーム非依存部分があればここに追加）
+#include "accelerometer.h"

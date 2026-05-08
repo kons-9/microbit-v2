@@ -1,3 +1,6 @@
-#include "speaker.h"
+/**
+ * @file speaker.cpp
+ * @brief スピーカードライバ共通部 (プラットフォーム非依存)
+ */
 
-// 共通ロジック（プラットフォーム非依存部分があればここに追加）
+#include "speaker.h"

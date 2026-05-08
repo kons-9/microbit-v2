@@ -1,11 +1,14 @@
 #pragma once
 
 /**
- * syslog.h — Log Level Configuration
+ * @file syslog.h
+ * @brief Log Level Configuration — ログレベルの定義と切り替え
  *
  * C/C++ 両対応:
  *   - C++: enum class + constexpr
  *   - C  : enum + define
+ *
+ * TODO: CMake で SYSLOG_LEVEL を定義し、ビルド時に切り替える
  */
 
 #include <stdint.h>
@@ -14,16 +17,16 @@
 
 namespace syslog {
 
-enum class level : uint8_t {
-    none = 0,
-    error = 1,
-    warn = 2,
-    info = 3,
-    debug = 4,
+enum class Level : uint8_t {
+    None = 0,
+    Error = 1,
+    Warn = 2,
+    Info = 3,
+    Debug = 4,
 };
 
-// TODO: CMake で SYSLOG_LEVEL を定義し、ビルド時に切り替える
-constexpr level active_level = level::debug;
+/* TODO: CMake で SYSLOG_LEVEL を定義し、ビルド時に切り替える */
+constexpr Level ACTIVE_LEVEL = Level::Debug;
 
 } /* namespace syslog */
 
@@ -35,9 +38,9 @@ typedef enum {
     SYSLOG_WARN = 2,
     SYSLOG_INFO = 3,
     SYSLOG_DEBUG = 4,
-} syslog_level_t;
+} SyslogLevel;
 
-// TODO: CMake で SYSLOG_LEVEL を定義し、ビルド時に切り替える
+/* TODO: CMake で SYSLOG_LEVEL を定義し、ビルド時に切り替える */
 #ifndef SYSLOG_ACTIVE_LEVEL
 #define SYSLOG_ACTIVE_LEVEL SYSLOG_DEBUG
 #endif

@@ -15,9 +15,4 @@ micro:bit v2.2 の 5x5 LED マトリクスドライバ。
 - `led_set_frame(bitmap)` - フレームバッファ一括設定
 - `led_scan_tick()` - 走査（定期タイマから呼び出し）
 
-## ビルド
-```
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
-```
+

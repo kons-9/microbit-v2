@@ -34,19 +34,4 @@ set_target_properties(template PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/template
 )
 
-# ===== test (linux only) =====
-if(TARGET_ARCH STREQUAL "linux")
-    enable_testing()
-
-    add_executable(template_test
-        test/linux/template_test.cpp
-    )
-
-    target_link_libraries(template_test PRIVATE template)
-
-    set_target_properties(template_test PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/template
-    )
-
-    add_test(NAME template_test COMMAND template_test)
-endif()
+# テストは firmware/test/CMakeLists.txt で統合管理

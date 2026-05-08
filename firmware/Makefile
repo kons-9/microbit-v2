@@ -65,3 +65,21 @@ $(MAIN):
 $(UPDATER):
 	cmake -B build/$(BUILD_TYPE)/updater -DAPP_TARGET=updater $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/updater
+
+# ======== Unit Tests ========
+TEST_BUILD_DIR := test/build
+
+.PHONY: test test-build test-%
+
+# 全テストをビルド＆実行
+test: test-build
+	cd $(TEST_BUILD_DIR) && ctest --output-on-failure
+
+# テストのビルドだけ
+test-build:
+	cmake -B $(TEST_BUILD_DIR) test -DCMAKE_BUILD_TYPE=Debug
+	cmake --build $(TEST_BUILD_DIR) -j$$(nproc)
+
+# コンポーネント単位で実行: make test-flash_fs, make test-shell, etc.
+test-%: test-build
+	cd $(TEST_BUILD_DIR) && ctest --output-on-failure -R "\\[$*\\]"

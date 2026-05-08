@@ -1,5 +1,10 @@
 #pragma once
 
+/**
+ * @file mutex
+ * @brief OSAL Mutex — 相互排他ロック
+ */
+
 #include <cstdint>
 
 namespace osal {
@@ -9,37 +14,35 @@ public:
     mutex();
     ~mutex();
 
-    mutex(const mutex&) = delete;
-    mutex& operator=(const mutex&) = delete;
+    mutex(const mutex &) = delete;
+    mutex &operator=(const mutex &) = delete;
 
     void lock();
     bool try_lock();
     void unlock();
 
 private:
-    struct impl;
-    friend struct impl;
-    alignas(8) unsigned char storage_[64];
+    alignas(8) unsigned char m_storage[64];
 };
 
-template<class Mutex>
+template <class MutexT>
 class lock_guard {
 public:
-    explicit lock_guard(Mutex& m) : mtx_(m) { mtx_.lock(); }
-    ~lock_guard() { mtx_.unlock(); }
-    lock_guard(const lock_guard&) = delete;
-    lock_guard& operator=(const lock_guard&) = delete;
+    explicit lock_guard(MutexT &m) : m_mtx(m) { m_mtx.lock(); }
+    ~lock_guard() { m_mtx.unlock(); }
+    lock_guard(const lock_guard &) = delete;
+    lock_guard &operator=(const lock_guard &) = delete;
+
 private:
-    Mutex& mtx_;
+    MutexT &m_mtx;
 };
 
-} // namespace osal
+}  // namespace osal
 
-// arch dispatch
 #if defined(OSAL_ARCH_linux)
 #include "arch/linux/mutex_impl.hpp"
 #elif defined(OSAL_ARCH_microbit)
 #include "arch/microbit/mutex_impl.hpp"
 #else
-#error "OSAL_ARCH not defined. Set -DOSAL_ARCH_linux or -DOSAL_ARCH_microbit"
+#error "OSAL_ARCH not defined"
 #endif

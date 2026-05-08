@@ -1,44 +1,55 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
-
 /**
- * micro:bit v2.2 地磁気センサドライバ
+ * @file magnetometer.h
+ * @brief micro:bit v2.2 地磁気センサドライバ
  *
- * ハードウェア: LSM303AGR (ST) - 磁気計部
+ * ハードウェア: LSM303AGR (ST) — 磁気計部
  * インターフェース: I2C (内部バス)
- *   SCL: P0.08 (I2C_INT_SCL)
- *   SDA: P0.16 (I2C_INT_SDA)
+ *   SCL: P0.08, SDA: P0.16
  *   アドレス: 0x1E
- *   割り込み: COMBINED_SENSOR_INT P0.25
  *
  * レンジ: ±50 gauss (固定)
  * 分解能: 16bit (1.5 mgauss/LSB)
  */
 
-/** 磁場データ (mGauss単位) */
+#include <stdint.h>
+#include <stdbool.h>
+
+/** 磁場データ (mGauss 単位) */
 typedef struct {
-    int16_t x;
-    int16_t y;
-    int16_t z;
-} mag_data_t;
+    int16_t m_x;
+    int16_t m_y;
+    int16_t m_z;
+} MagnetometerData;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** 地磁気センサを初期化する */
-bool mag_init(void);
+/**
+ * 地磁気センサを初期化する
+ * @return true: 成功, false: WHO_AM_I 不一致等
+ */
+bool magnetometer_init(void);
 
-/** 磁場データを読み取る (mGauss単位) */
-mag_data_t mag_read(void);
+/**
+ * 磁場データを読み取る
+ * @return 磁場データ (mGauss 単位)
+ */
+MagnetometerData magnetometer_read(void);
 
-/** デバイスIDを確認する (WHO_AM_I, 期待値: 0x40) */
-uint8_t mag_who_am_i(void);
+/**
+ * デバイス ID を確認する
+ * @return WHO_AM_I 値 (期待値: 0x40)
+ */
+uint8_t magnetometer_who_am_i(void);
 
-/** 方位角を取得する (度, 0-359, 北=0) */
-uint16_t mag_heading(void);
+/**
+ * 方位角を取得する
+ * @return 方位角 (度, 0-359, 北=0)
+ */
+uint16_t magnetometer_heading(void);
 
 #ifdef __cplusplus
 }

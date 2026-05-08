@@ -17,9 +17,4 @@ micro:bit v2.2 のボタンA/Bドライバ。
 - ポーリング方式 (μT-Kernel `tk_dly_tsk` 使用)
 - 外部プルアップ付きのため `NRF_GPIO_PIN_NOPULL` で設定
 
-## ビルド
-```
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
-```
+

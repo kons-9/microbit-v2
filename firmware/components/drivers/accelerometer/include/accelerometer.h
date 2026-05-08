@@ -1,53 +1,77 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
-
 /**
- * micro:bit v2.2 加速度センサドライバ
+ * @file accelerometer.h
+ * @brief micro:bit v2.2 加速度センサドライバ
  *
  * ハードウェア: LSM303AGR (ST)
  * インターフェース: I2C (内部バス)
- *   SCL: P0.08 (I2C_INT_SCL)
- *   SDA: P0.16 (I2C_INT_SDA)
+ *   SCL: P0.08, SDA: P0.16
  *   加速度計アドレス: 0x19
- *   地磁気計アドレス: 0x1E
  *   割り込み: COMBINED_SENSOR_INT P0.25
  *
  * レンジ: ±2g / ±4g / ±8g / ±16g
- * 分解能: 8/10/12 bits
+ * 分解能: 12bit (high-resolution mode)
  */
 
-/** 加速度データ (mg単位) */
-typedef struct {
-    int16_t x;
-    int16_t y;
-    int16_t z;
-} accel_data_t;
+#include <stdint.h>
+#include <stdbool.h>
+
+#ifdef __cplusplus
 
 /** 加速度レンジ設定 */
+enum class AccelerometerRange : uint8_t {
+    G2 = 0,
+    G4 = 1,
+    G8 = 2,
+    G16 = 3,
+};
+
+#else
+
 typedef enum {
-    ACCEL_RANGE_2G = 0,
-    ACCEL_RANGE_4G = 1,
-    ACCEL_RANGE_8G = 2,
-    ACCEL_RANGE_16G = 3,
-} accel_range_t;
+    ACCELEROMETER_RANGE_2G = 0,
+    ACCELEROMETER_RANGE_4G = 1,
+    ACCELEROMETER_RANGE_8G = 2,
+    ACCELEROMETER_RANGE_16G = 3,
+} AccelerometerRange;
+
+#endif
+
+/** 加速度データ (mg 単位) */
+typedef struct {
+    int16_t m_x;
+    int16_t m_y;
+    int16_t m_z;
+} AccelerometerData;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** 加速度センサを初期化する */
-bool accel_init(void);
+/**
+ * 加速度センサを初期化する
+ * @return true: 成功, false: WHO_AM_I 不一致等
+ */
+bool accelerometer_init(void);
 
-/** レンジを設定する */
-void accel_set_range(accel_range_t range);
+/**
+ * レンジを設定する
+ * @param range  加速度レンジ
+ */
+void accelerometer_set_range(uint8_t range);
 
-/** 加速度データを読み取る (mg単位) */
-accel_data_t accel_read(void);
+/**
+ * 加速度データを読み取る
+ * @return 加速度データ (mg 単位)
+ */
+AccelerometerData accelerometer_read(void);
 
-/** デバイスIDを確認する (WHO_AM_I, 期待値: 0x33) */
-uint8_t accel_who_am_i(void);
+/**
+ * デバイス ID を確認する
+ * @return WHO_AM_I 値 (期待値: 0x33)
+ */
+uint8_t accelerometer_who_am_i(void);
 
 #ifdef __cplusplus
 }

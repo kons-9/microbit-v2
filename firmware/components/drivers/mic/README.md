@@ -11,15 +11,10 @@ micro:bit v2.2 のマイクドライバ。
 - 周波数範囲: 100Hz ~ 80kHz
 
 ## API
-- `mic_init()` - 初期化（ADC/GPIO設定）
-- `mic_enable()` / `mic_disable()` - 電源制御
-- `mic_is_enabled()` - 状態確認
-- `mic_read()` - ADC生値取得 (0-1023)
-- `mic_get_level()` - 音量レベル取得 (0-255)
+- `microphone_init()` - 初期化（ADC/GPIO設定）
+- `microphone_enable()` / `microphone_disable()` - 電源制御
+- `microphone_is_enabled()` - 状態確認
+- `microphone_read()` - ADC生値取得 (0-1023)
+- `microphone_get_level()` - 音量レベル取得 (0-255)
 
-## ビルド
-```
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
-```
+

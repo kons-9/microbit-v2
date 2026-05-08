@@ -1,3 +1,6 @@
-#include "temperature.h"
+/**
+ * @file temperature.cpp
+ * @brief 温度センサドライバ共通部 (プラットフォーム非依存)
+ */
 
-// 共通ロジック（プラットフォーム非依存部分があればここに追加）
+#include "temperature.h"

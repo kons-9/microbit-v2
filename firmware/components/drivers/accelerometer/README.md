@@ -13,14 +13,9 @@ micro:bit v2.2 の加速度センサドライバ (LSM303AGR)。
 - 分解能: 12bit (high-resolution mode)
 
 ## API
-- `accel_init()` - 初期化（I2C設定、WHO_AM_I確認）
-- `accel_set_range(range)` - 測定レンジ設定
-- `accel_read()` - 3軸加速度データ取得 (mg単位)
-- `accel_who_am_i()` - デバイスID確認 (期待値: 0x33)
+- `accelerometer_init()` - 初期化（I2C設定、WHO_AM_I確認）
+- `accelerometer_set_range(range)` - 測定レンジ設定
+- `accelerometer_read()` - 3軸加速度データ取得 (mg単位)
+- `accelerometer_who_am_i()` - デバイスID確認 (期待値: 0x33)
 
-## ビルド
-```
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
-```
+

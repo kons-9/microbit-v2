@@ -1,62 +1,65 @@
+/**
+ * @file ota_microbit.c
+ * @brief micro:bit v2 (nRF52833) OTA Flash 操作
+ *
+ * NOTE: 低レベル Flash 操作のため C で記述する。
+ * メモリレイアウトは sysconfig 経由で参照する。
+ */
+
 #include "arch/ota_arch.h"
 
 #include <nrf.h>
 #include <nrfx_nvmc.h>
+
 #include <sysconfig.h>
 
-/**
- * micro:bit v2 (nRF52833) OTA Flash操作
- *
- * メモリレイアウトは sysconfig 経由で参照。
- */
-
 void ota_arch_flash_erase(uint32_t offset, uint32_t size) {
-    uint32_t addr = sysconfig_app_slot_addr() + offset;
-    uint32_t end = addr + size;
+    uint32_t address = sysconfig_get_app_slot_address() + offset;
+    uint32_t end = address + size;
 
     /* ページ境界にアライン */
-    addr &= ~(SYSCONFIG_FLASH_PAGE_SIZE - 1);
+    address &= ~(SYSCONFIG_FLASH_PAGE_SIZE - 1);
 
-    while (addr < end) {
-        nrfx_nvmc_page_erase(addr);
-        addr += SYSCONFIG_FLASH_PAGE_SIZE;
+    while (address < end) {
+        nrfx_nvmc_page_erase(address);
+        address += SYSCONFIG_FLASH_PAGE_SIZE;
     }
 }
 
-void ota_arch_flash_write(uint32_t offset, const void *data, uint32_t len) {
-    uint32_t addr = sysconfig_app_slot_addr() + offset;
-    nrfx_nvmc_words_write(addr, data, len / 4);
+void ota_arch_flash_write(uint32_t offset, const void *data, uint32_t length) {
+    uint32_t address = sysconfig_get_app_slot_address() + offset;
+    nrfx_nvmc_words_write(address, data, length / 4);
 
-    /* 端数バイトがある場合 (4バイト未満) */
-    uint32_t remainder = len & 3;
+    /* 端数バイト処理 (4バイト未満) */
+    uint32_t remainder = length & 3;
     if (remainder > 0) {
         uint32_t word = 0xFFFFFFFF;
-        const uint8_t *src = (const uint8_t *)data + (len - remainder);
+        const uint8_t *source = (const uint8_t *)data + (length - remainder);
         for (uint32_t i = 0; i < remainder; i++) {
-            word &= ~(0xFF << (i * 8));
-            word |= (uint32_t)src[i] << (i * 8);
+            word &= ~((uint32_t)0xFF << (i * 8));
+            word |= (uint32_t)source[i] << (i * 8);
         }
-        nrfx_nvmc_word_write(addr + len - remainder, word);
+        nrfx_nvmc_word_write(address + length - remainder, word);
     }
 }
 
-void ota_arch_flash_read(uint32_t offset, void *buf, uint32_t len) {
-    uint32_t addr = sysconfig_app_slot_addr() + offset;
-    const uint8_t *src = (const uint8_t *)addr;
-    uint8_t *dst = (uint8_t *)buf;
+void ota_arch_flash_read(uint32_t offset, void *buffer, uint32_t length) {
+    uint32_t address = sysconfig_get_app_slot_address() + offset;
+    const uint8_t *source = (const uint8_t *)address;
+    uint8_t *destination = (uint8_t *)buffer;
 
-    for (uint32_t i = 0; i < len; i++) {
-        dst[i] = src[i];
+    for (uint32_t i = 0; i < length; i++) {
+        destination[i] = source[i];
     }
 }
 
 uint32_t ota_arch_get_app_slot_size(void) {
-    return sysconfig_app_slot_size();
+    return sysconfig_get_app_slot_size();
 }
 
 void ota_arch_reboot(sysconfig_boot_mode_t mode) {
-    uint32_t addr = sysconfig_settings_addr();
-    nrfx_nvmc_page_erase(addr);
-    nrfx_nvmc_word_write(addr, (uint32_t)mode);
+    uint32_t address = sysconfig_get_settings_address();
+    nrfx_nvmc_page_erase(address);
+    nrfx_nvmc_word_write(address, (uint32_t)mode);
     NVIC_SystemReset();
 }

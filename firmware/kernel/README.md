@@ -1,12 +1,22 @@
-# uT-kernel
-micro:bit用のuT-kernelをここに置く
+# μT-Kernel 3
 
-パスワードは以下の最後を参照のこと  
-https://www.t-engine4u.com/info/mbit/2.html
+micro:bit v2.2 (nRF52833) 用の μT-Kernel 3 RTOS。
 
-```zsh
+## セットアップ
+
+パスワード: https://www.t-engine4u.com/info/mbit/2.html
+
+```bash
+cd firmware/kernel
+./setup.sh
+```
+
+または手動:
+
+```bash
 PASSWORD=xxxxx
-cd `git rev-parse --show-toplevel`/firmware/kernel/
 wget https://www.personal-media.co.jp/book/tw/data/362_mbit_mtk3.zip
 unzip -P $PASSWORD 362_mbit_mtk3.zip
 ```
+
+展開後、`mtkernel_3/` ディレクトリが生成される。

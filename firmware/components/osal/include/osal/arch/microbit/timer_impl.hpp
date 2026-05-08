@@ -15,28 +15,26 @@ struct microbit_oneshot_ctx {
 };
 }  // namespace detail
 
-// ===== cyclic_timer =====
+/* ===== cyclic_timer ===== */
 
 inline cyclic_timer::cyclic_timer(handler_t handler, uint32_t interval_ms, void *param) {
-    static_assert(sizeof(storage_) >= sizeof(detail::microbit_cyclic_ctx), "storage too small for microbit_cyclic_ctx");
-    auto *ctx = reinterpret_cast<detail::microbit_cyclic_ctx *>(storage_);
+    static_assert(sizeof(m_storage) >= sizeof(detail::microbit_cyclic_ctx), "storage too small");
+    auto *ctx = reinterpret_cast<detail::microbit_cyclic_ctx *>(m_storage);
 
     T_CCYC ccyc = {};
     ccyc.exinf = param;
-    ccyc.cycatr = TA_HLNG | TA_STA;  // auto-start disabled initially
+    ccyc.cycatr = TA_HLNG;
     ccyc.cychdr = reinterpret_cast<FP>(handler);
     ccyc.cyctim = static_cast<RELTIM>(interval_ms);
     ccyc.cycphs = 0;
 
-    // Create stopped (remove TA_STA)
-    ccyc.cycatr = TA_HLNG;
     ID id = tk_cre_cyc(&ccyc);
     assert(id > 0);
     ctx->id = id;
 }
 
 inline cyclic_timer::~cyclic_timer() {
-    auto *ctx = reinterpret_cast<detail::microbit_cyclic_ctx *>(storage_);
+    auto *ctx = reinterpret_cast<detail::microbit_cyclic_ctx *>(m_storage);
     if (ctx->id > 0) {
         tk_stp_cyc(ctx->id);
         tk_del_cyc(ctx->id);
@@ -44,21 +42,20 @@ inline cyclic_timer::~cyclic_timer() {
 }
 
 inline void cyclic_timer::start() {
-    auto *ctx = reinterpret_cast<detail::microbit_cyclic_ctx *>(storage_);
+    auto *ctx = reinterpret_cast<detail::microbit_cyclic_ctx *>(m_storage);
     tk_sta_cyc(ctx->id);
 }
 
 inline void cyclic_timer::stop() {
-    auto *ctx = reinterpret_cast<detail::microbit_cyclic_ctx *>(storage_);
+    auto *ctx = reinterpret_cast<detail::microbit_cyclic_ctx *>(m_storage);
     tk_stp_cyc(ctx->id);
 }
 
-// ===== oneshot_timer =====
+/* ===== oneshot_timer ===== */
 
 inline oneshot_timer::oneshot_timer(handler_t handler, void *param) {
-    static_assert(sizeof(storage_) >= sizeof(detail::microbit_oneshot_ctx),
-                  "storage too small for microbit_oneshot_ctx");
-    auto *ctx = reinterpret_cast<detail::microbit_oneshot_ctx *>(storage_);
+    static_assert(sizeof(m_storage) >= sizeof(detail::microbit_oneshot_ctx), "storage too small");
+    auto *ctx = reinterpret_cast<detail::microbit_oneshot_ctx *>(m_storage);
 
     T_CALM calm = {};
     calm.exinf = param;
@@ -71,7 +68,7 @@ inline oneshot_timer::oneshot_timer(handler_t handler, void *param) {
 }
 
 inline oneshot_timer::~oneshot_timer() {
-    auto *ctx = reinterpret_cast<detail::microbit_oneshot_ctx *>(storage_);
+    auto *ctx = reinterpret_cast<detail::microbit_oneshot_ctx *>(m_storage);
     if (ctx->id > 0) {
         tk_stp_alm(ctx->id);
         tk_del_alm(ctx->id);
@@ -79,12 +76,12 @@ inline oneshot_timer::~oneshot_timer() {
 }
 
 inline void oneshot_timer::start(uint32_t delay_ms) {
-    auto *ctx = reinterpret_cast<detail::microbit_oneshot_ctx *>(storage_);
+    auto *ctx = reinterpret_cast<detail::microbit_oneshot_ctx *>(m_storage);
     tk_sta_alm(ctx->id, static_cast<RELTIM>(delay_ms));
 }
 
 inline void oneshot_timer::stop() {
-    auto *ctx = reinterpret_cast<detail::microbit_oneshot_ctx *>(storage_);
+    auto *ctx = reinterpret_cast<detail::microbit_oneshot_ctx *>(m_storage);
     tk_stp_alm(ctx->id);
 }
 

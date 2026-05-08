@@ -1,17 +1,21 @@
+/**
+ * @file speaker_microbit.cpp
+ * @brief micro:bit v2.2 スピーカー PWM 実装
+ */
+
 #include "speaker.h"
+
 #include "nrf_gpio.h"
 #include "nrfx_pwm.h"
 
-// micro:bit v2.2 speaker pin
-#define SPEAKER_PIN NRF_GPIO_PIN_MAP(0, 0)
+static constexpr uint32_t SPEAKER_PIN = NRF_GPIO_PIN_MAP(0, 0);
 
-static nrfx_pwm_t pwm_instance = NRFX_PWM_INSTANCE(0);
-static bool playing = false;
+static nrfx_pwm_t s_pwmInstance = NRFX_PWM_INSTANCE(0);
+static bool s_playing = false;
 
-// PWMシーケンス用バッファ
-static nrf_pwm_values_common_t pwm_seq_values[1];
-static nrf_pwm_sequence_t pwm_sequence = {
-    .values = {.p_common = pwm_seq_values},
+static nrf_pwm_values_common_t s_pwmSeqValues[1];
+static nrf_pwm_sequence_t s_pwmSequence = {
+    .values = {.p_common = s_pwmSeqValues},
     .length = 1,
     .repeats = 0,
     .end_delay = 0,
@@ -26,8 +30,8 @@ void speaker_init(void) {
     config.count_mode = NRF_PWM_MODE_UP;
     config.load_mode = NRF_PWM_LOAD_COMMON;
 
-    nrfx_pwm_init(&pwm_instance, &config, NULL, NULL);
-    playing = false;
+    nrfx_pwm_init(&s_pwmInstance, &config, nullptr, nullptr);
+    s_playing = false;
 }
 
 void speaker_tone(uint32_t freq_hz) {
@@ -36,27 +40,25 @@ void speaker_tone(uint32_t freq_hz) {
         return;
     }
 
-    // PWM周期 = 1MHz / freq_hz
-    uint16_t top_value = 1000000 / freq_hz;
-    if (top_value < 2)
-        top_value = 2;
+    uint16_t topValue = static_cast<uint16_t>(1000000U / freq_hz);
+    if (topValue < 2) {
+        topValue = 2;
+    }
 
-    // duty 50%
-    pwm_seq_values[0] = top_value / 2;
+    s_pwmSeqValues[0] = topValue / 2;
 
-    nrfx_pwm_stop(&pwm_instance, false);
+    nrfx_pwm_stop(&s_pwmInstance, false);
 
-    // top_valueを設定してシーケンスを再生
-    NRF_PWM0->COUNTERTOP = top_value;
-    nrfx_pwm_simple_playback(&pwm_instance, &pwm_sequence, 1, NRFX_PWM_FLAG_LOOP);
-    playing = true;
+    NRF_PWM0->COUNTERTOP = topValue;
+    nrfx_pwm_simple_playback(&s_pwmInstance, &s_pwmSequence, 1, NRFX_PWM_FLAG_LOOP);
+    s_playing = true;
 }
 
 void speaker_stop(void) {
-    nrfx_pwm_stop(&pwm_instance, false);
-    playing = false;
+    nrfx_pwm_stop(&s_pwmInstance, false);
+    s_playing = false;
 }
 
 bool speaker_is_playing(void) {
-    return playing;
+    return s_playing;
 }

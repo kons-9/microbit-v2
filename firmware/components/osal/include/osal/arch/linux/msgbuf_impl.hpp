@@ -19,7 +19,7 @@ struct linux_msgbuf {
     size_t max_msg_size;
     size_t head;
     size_t tail;
-    size_t count;  // bytes used
+    size_t count;
 };
 
 inline void timespec_from_ms(struct timespec &ts, uint32_t timeout_ms) {
@@ -34,8 +34,8 @@ inline void timespec_from_ms(struct timespec &ts, uint32_t timeout_ms) {
 }  // namespace detail
 
 inline message_buffer::message_buffer(size_t buf_size, size_t max_msg_size) {
-    static_assert(sizeof(storage_) >= sizeof(detail::linux_msgbuf), "storage too small for linux_msgbuf");
-    auto *mb = reinterpret_cast<detail::linux_msgbuf *>(storage_);
+    static_assert(sizeof(m_storage) >= sizeof(detail::linux_msgbuf), "storage too small");
+    auto *mb = reinterpret_cast<detail::linux_msgbuf *>(m_storage);
     pthread_mutex_init(&mb->mtx, nullptr);
     pthread_cond_init(&mb->cond_send, nullptr);
     pthread_cond_init(&mb->cond_recv, nullptr);
@@ -49,7 +49,7 @@ inline message_buffer::message_buffer(size_t buf_size, size_t max_msg_size) {
 }
 
 inline message_buffer::~message_buffer() {
-    auto *mb = reinterpret_cast<detail::linux_msgbuf *>(storage_);
+    auto *mb = reinterpret_cast<detail::linux_msgbuf *>(m_storage);
     std::free(mb->buffer);
     pthread_cond_destroy(&mb->cond_recv);
     pthread_cond_destroy(&mb->cond_send);
@@ -57,11 +57,11 @@ inline message_buffer::~message_buffer() {
 }
 
 inline bool message_buffer::send(const void *data, size_t size, uint32_t timeout_ms) {
-    auto *mb = reinterpret_cast<detail::linux_msgbuf *>(storage_);
-    if (size == 0 || size > mb->max_msg_size)
+    auto *mb = reinterpret_cast<detail::linux_msgbuf *>(m_storage);
+    if (size == 0 || size > mb->max_msg_size) {
         return false;
+    }
 
-    // Each message stored as: [uint32_t length][payload]
     size_t frame_size = sizeof(uint32_t) + size;
 
     pthread_mutex_lock(&mb->mtx);
@@ -73,31 +73,27 @@ inline bool message_buffer::send(const void *data, size_t size, uint32_t timeout
     }
 
     while (mb->buf_size - mb->count < frame_size) {
-        int rc;
         if (has_timeout) {
-            rc = pthread_cond_timedwait(&mb->cond_send, &mb->mtx, &ts);
+            int rc = pthread_cond_timedwait(&mb->cond_send, &mb->mtx, &ts);
             if (rc == ETIMEDOUT) {
                 pthread_mutex_unlock(&mb->mtx);
                 return false;
             }
         } else {
-            rc = pthread_cond_wait(&mb->cond_send, &mb->mtx);
+            pthread_cond_wait(&mb->cond_send, &mb->mtx);
         }
-        (void)rc;
     }
 
-    // Write length header
     auto write_byte = [&](uint8_t b) {
         mb->buffer[mb->tail] = b;
         mb->tail = (mb->tail + 1) % mb->buf_size;
         mb->count++;
     };
 
-    uint32_t len = static_cast<uint32_t>(size);
+    auto len = static_cast<uint32_t>(size);
     for (size_t i = 0; i < sizeof(uint32_t); ++i) {
         write_byte(static_cast<uint8_t>((len >> (i * 8)) & 0xFF));
     }
-    // Write payload
     const auto *src = static_cast<const uint8_t *>(data);
     for (size_t i = 0; i < size; ++i) {
         write_byte(src[i]);
@@ -109,7 +105,7 @@ inline bool message_buffer::send(const void *data, size_t size, uint32_t timeout
 }
 
 inline size_t message_buffer::receive(void *data, size_t max_size, uint32_t timeout_ms) {
-    auto *mb = reinterpret_cast<detail::linux_msgbuf *>(storage_);
+    auto *mb = reinterpret_cast<detail::linux_msgbuf *>(m_storage);
 
     pthread_mutex_lock(&mb->mtx);
 
@@ -119,19 +115,16 @@ inline size_t message_buffer::receive(void *data, size_t max_size, uint32_t time
         detail::timespec_from_ms(ts, timeout_ms);
     }
 
-    // Wait until at least a header is available
     while (mb->count < sizeof(uint32_t)) {
-        int rc;
         if (has_timeout) {
-            rc = pthread_cond_timedwait(&mb->cond_recv, &mb->mtx, &ts);
+            int rc = pthread_cond_timedwait(&mb->cond_recv, &mb->mtx, &ts);
             if (rc == ETIMEDOUT) {
                 pthread_mutex_unlock(&mb->mtx);
                 return 0;
             }
         } else {
-            rc = pthread_cond_wait(&mb->cond_recv, &mb->mtx);
+            pthread_cond_wait(&mb->cond_recv, &mb->mtx);
         }
-        (void)rc;
     }
 
     auto read_byte = [&]() -> uint8_t {
@@ -141,7 +134,6 @@ inline size_t message_buffer::receive(void *data, size_t max_size, uint32_t time
         return b;
     };
 
-    // Read length
     uint32_t len = 0;
     for (size_t i = 0; i < sizeof(uint32_t); ++i) {
         len |= static_cast<uint32_t>(read_byte()) << (i * 8);
@@ -151,8 +143,9 @@ inline size_t message_buffer::receive(void *data, size_t max_size, uint32_t time
     auto *dst = static_cast<uint8_t *>(data);
     for (size_t i = 0; i < len; ++i) {
         uint8_t b = read_byte();
-        if (i < to_read)
+        if (i < to_read) {
             dst[i] = b;
+        }
     }
 
     pthread_cond_signal(&mb->cond_send);

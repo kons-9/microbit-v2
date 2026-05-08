@@ -23,33 +23,4 @@ else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()
 
-# ===== test (linux only) =====
-if(TARGET_ARCH STREQUAL "linux")
-    include(FetchContent)
-    FetchContent_Declare(
-        Catch2
-        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-        GIT_TAG        v3.5.2
-    )
-    FetchContent_MakeAvailable(Catch2)
-
-    enable_testing()
-
-    add_executable(osal_test
-        test/linux/test_mutex.cpp
-        test/linux/test_semaphore.cpp
-        test/linux/test_task.cpp
-        test/linux/test_eventflag.cpp
-        test/linux/test_msgbuf.cpp
-        test/linux/test_timer.cpp
-    )
-
-    target_link_libraries(osal_test PRIVATE osal Catch2::Catch2WithMain)
-
-    set_target_properties(osal_test PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/osal
-    )
-
-    include(Catch)
-    catch_discover_tests(osal_test)
-endif()
+# テストは firmware/test/CMakeLists.txt で統合管理

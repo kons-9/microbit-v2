@@ -1,3 +1,6 @@
-#include "button.h"
+/**
+ * @file button.cpp
+ * @brief ボタンドライバ共通部 (プラットフォーム非依存)
+ */
 
-// 共通ロジック（プラットフォーム非依存部分があればここに追加）
+#include "button.h"

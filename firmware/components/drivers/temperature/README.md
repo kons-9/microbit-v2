@@ -18,9 +18,4 @@ micro:bit v2.2 の温度センサドライバ (nRF52833 内蔵)。
 - 測定はオンデマンド (TASKS_START/EVENTS_DATARDY)
 - チップ内部温度のため、環境温度より数度高くなる傾向あり
 
-## ビルド
-```
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
-```
+

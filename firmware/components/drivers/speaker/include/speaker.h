@@ -1,15 +1,16 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdbool.h>
-
 /**
- * micro:bit v2.2 スピーカードライバ
+ * @file speaker.h
+ * @brief micro:bit v2.2 スピーカードライバ
  *
  * ハードウェア: JIANGSU HUANENG MLT-8530
- * 接続: P0.00 (PWM出力)
+ * 接続: P0.00 (PWM 出力)
  * 自己共振周波数: 2700Hz
  */
+
+#include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +19,10 @@ extern "C" {
 /** スピーカーを初期化する */
 void speaker_init(void);
 
-/** 指定周波数のトーンを再生する (freq_hz: 周波数Hz, 0で停止) */
+/**
+ * 指定周波数のトーンを再生する
+ * @param freq_hz  周波数 [Hz], 0 で停止
+ */
 void speaker_tone(uint32_t freq_hz);
 
 /** スピーカーを停止する */

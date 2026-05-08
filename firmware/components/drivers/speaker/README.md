@@ -14,9 +14,4 @@ micro:bit v2.2 のスピーカードライバ。
 - `speaker_stop()` - 停止
 - `speaker_is_playing()` - 再生状態確認
 
-## ビルド
-```
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
-```
+

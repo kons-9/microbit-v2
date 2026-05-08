@@ -1,39 +1,62 @@
 #pragma once
 
 /**
- * Crash Information Structure
+ * @file crash_info.h
+ * @brief Crash Information — フォルト情報の構造体定義と操作API
  *
- * フォルトハンドラがSettings pageに保存するクラッシュ情報。
+ * フォルトハンドラが Settings page に保存するクラッシュ情報を定義する。
  * main app / updater 両方から参照される。
  *
  * Settings page layout (0x0007F000, 4KB):
  *   +0x000: boot_mode (uint32_t) — SYSCONFIG_BOOT_APP or SYSCONFIG_BOOT_UPDATER
- *   +0x004: crash_info_t          — クラッシュ情報 (存在する場合)
+ *   +0x004: CrashInfo            — クラッシュ情報 (存在する場合)
  */
 
 #include <stdint.h>
+
 #include <sysconfig.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ---- Crash Info ---- */
+/* ==================================================================
+ * 定数
+ * ================================================================== */
 
-#define CRASH_INFO_MAGIC 0x43524153 /* "CRAS" */
+/** クラッシュ情報の有効性を示すマジックナンバー ("CRAS") */
+#define CRASH_INFO_MAGIC 0x43524153U
+
+/** スタックダンプのワード数 */
 #define CRASH_STACK_DUMP_WORDS 16
 
+/* ==================================================================
+ * 型定義
+ * ================================================================== */
+
+/** フォルト種別 */
+#ifdef __cplusplus
+enum class CrashFaultType : uint32_t {
+    Hard = 1,
+    Mem = 2,
+    Bus = 3,
+    Usage = 4,
+    NMI = 5,
+};
+#else
 typedef enum {
     CRASH_FAULT_HARD = 1,
     CRASH_FAULT_MEM = 2,
     CRASH_FAULT_BUS = 3,
     CRASH_FAULT_USAGE = 4,
     CRASH_FAULT_NMI = 5,
-} crash_fault_type_t;
+} CrashFaultType;
+#endif
 
+/** クラッシュ情報構造体 */
 typedef struct {
     uint32_t magic;      /**< CRASH_INFO_MAGIC if valid */
-    uint32_t fault_type; /**< crash_fault_type_t */
+    uint32_t fault_type; /**< CrashFaultType */
 
     /* Exception frame (CPU が自動 push した値) */
     uint32_t r0;
@@ -57,18 +80,23 @@ typedef struct {
 
     /* Stack dump (フォルト時のスタック上位Nワード) */
     uint32_t stack_dump[CRASH_STACK_DUMP_WORDS];
-} crash_info_t;
+} CrashInfo;
 
 /**
  * フォルトハンドラの型
  *
- * @param type       フォルト種別
- * @param frame      CPU が自動 push した exception frame (R0,R1,...,xPSR)
- * @param exc_return EXC_RETURN 値 (LR at exception entry)
+ * @pre  frame は CPU が自動 push した exception frame (R0,R1,...,xPSR) を指す
+ * @post この関数から戻ってはならない
  *
- * この関数から戻ってはならない。
+ * @param type        フォルト種別
+ * @param frame       exception frame ポインタ
+ * @param exc_return  EXC_RETURN 値 (LR at exception entry)
  */
-typedef void (*crash_handler_fn)(crash_fault_type_t type, uint32_t *frame, uint32_t exc_return);
+typedef void (*CrashHandlerCallback)(uint32_t type, uint32_t *frame, uint32_t exc_return);
+
+/* ==================================================================
+ * API
+ * ================================================================== */
 
 /**
  * フォルトハンドラを設定する
@@ -76,19 +104,20 @@ typedef void (*crash_handler_fn)(crash_fault_type_t type, uint32_t *frame, uint3
  * 設定しない場合はデフォルトハンドラが使われる
  * (クラッシュ情報を Settings page に保存し updater モードで再起動)。
  *
- * @param fn  ハンドラ関数 (NULL でデフォルトに戻す)
+ * @param callback  ハンドラ関数 (NULL でデフォルトに戻す)
  */
-void crash_set_handler(crash_handler_fn fn);
+void crash_set_handler(CrashHandlerCallback callback);
 
 /**
  * Settings page からクラッシュ情報を読み出す
- * @param info  読み出し先
+ *
+ * @param info  読み出し先バッファ
  * @return 0 if valid crash info found, -1 if none
  */
-int crash_info_read(crash_info_t *info);
+int32_t crash_info_read(CrashInfo *info);
 
 /**
- * Settings page のクラッシュ情報をクリア (ブートモードは保持)
+ * Settings page のクラッシュ情報をクリアする (ブートモードは保持)
  */
 void crash_info_clear(void);
 

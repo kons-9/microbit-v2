@@ -1,78 +1,77 @@
 # components
 
-micro:bit v2.2 ハードウェアドライバ群。
-
-各コンポーネントのテンプレートは ./template を参照。
+micro:bit v2.2 向けコンポーネント群。各コンポーネントは arch/ 層で実機/Linuxを切り替える。
 
 ## コンポーネント一覧
 
-| コンポーネント | 説明 | インターフェース | チップ/ペリフェラル |
-|---|---|---|---|
-| `led` | 5x5 LEDマトリクス | GPIO (ROW/COL走査) | 表面実装LED |
-| `speaker` | スピーカー | PWM (P0.00) | MLT-8530 |
-| `mic` | マイク | ADC (P0.05) + GPIO (P0.20) | SPU0410LR5H-QB-7 |
-| `accelerometer` | 加速度センサ | I2C 0x19 | LSM303AGR |
-| `magnetometer` | 地磁気センサ | I2C 0x1E | LSM303AGR |
-| `button` | ボタンA/B | GPIO (P0.14/P0.23) | タクトスイッチ |
-| `touch` | タッチロゴ | GPIO (P1.04) | 静電容量式パッド |
-| `temperature` | 温度センサ | TEMP peripheral | nRF52833内蔵 |
-| `ble` | BLE通信 | SoftDevice | nRF52833 Radio |
-| `osal` | OS抽象化層 | - | μT-Kernel |
-| `utkernel-cpp` | μT-Kernel C++ラッパー | - | - |
-| `template` | コンポーネントテンプレート | - | - |
+| コンポーネント | 説明 | テスト |
+|---|---|---|
+| `ble` | BLE GAP (scan/advertise) | - |
+| `flash_fs` | NOR Flash ファイルシステム (stream + block) | 13件 |
+| `shell` | UART シェル (help/ls/cat/erase) | 9件 |
+| `log` | バイナリログ (flash_log) + テキストログ | 4件 + 16件(py) |
+| `signal` | EMA フィルタ / RSSI 集約 | 6件 |
+| `osal` | RTOS 抽象化 (mutex/semaphore/task/timer) | 22件 |
+| `ota` | OTA 受信・検証・書き込み | - |
+| `crash` | HardFault ハンドラ + crash info 永続化 | - |
+| `sysconfig` | メモリマップ定数 (header-only) | - |
+| `utkernel-cpp` | μT-Kernel C ラッパーヘッダ | - |
+| `template` | 新規コンポーネントのテンプレート | 1件 |
 
-## ディレクトリ構成 (各コンポーネント共通)
+### ドライバ (`drivers/`)
+
+| ドライバ | チップ/ペリフェラル | インターフェース |
+|---|---|---|
+| `accelerometer` | LSM303AGR | I2C 0x19 |
+| `magnetometer` | LSM303AGR | I2C 0x1E |
+| `led` | 5x5 LED マトリクス | GPIO ROW/COL 走査 |
+| `speaker` | MLT-8530 | PWM P0.00 |
+| `mic` | SPU0410LR5H | ADC P0.05 + GPIO P0.20 |
+| `button` | タクトスイッチ A/B | GPIO P0.14/P0.23 |
+| `touch` | 静電容量パッド | GPIO P1.04 |
+| `temperature` | nRF52833 内蔵 | TEMP peripheral |
+| `uart` | nRF52833 UARTE0 | USB CDC 経由 |
+
+## テスト実行
+
+```bash
+cd firmware
+make test              # 全 55 件
+make test-flash_fs     # コンポーネント単位
+make test-osal
+make test-shell
+make test-signal
+make test-flash_log
+```
+
+## アーキテクチャパターン
 
 ```
 component_name/
-├── CMakeLists.txt          # ビルド定義
-├── README.md               # ドキュメント
+├── CMakeLists.txt
 ├── include/
-│   └── component_name.h    # 公開API (C/C++共用)
+│   └── component_name.h    # 公開 API
 ├── src/
 │   ├── component_name.cpp  # プラットフォーム非依存ロジック
 │   └── arch/
 │       ├── microbit/       # nRF52833 実機実装
 │       └── linux/          # ホストテスト用スタブ
 └── test/
-    └── linux/              # Linux上ユニットテスト
+    └── linux/              # Catch2 ユニットテスト
 ```
 
-## ピンマップ (micro:bit v2.2 / nRF52833)
+## ピンマップ (micro:bit v2.2)
 
 ```
-P0.00  SPEAKER (PWM)
-P0.05  MIC_IN (ADC AIN3)
-P0.08  I2C_INT_SCL (加速度/地磁気)
-P0.14  BUTTON_A (active low)
-P0.15  ROW3
-P0.16  I2C_INT_SDA (加速度/地磁気)
-P0.19  ROW5
-P0.20  RUN_MIC (マイク電源)
-P0.21  ROW1
-P0.22  ROW2
-P0.23  BUTTON_B (active low)
-P0.24  ROW4
-P0.25  COMBINED_SENSOR_INT
-P0.28  COL1
-P0.30  COL5
-P0.31  COL3
-P1.04  FACE_TOUCH
-P1.05  COL4
-P0.11  COL2
-```
-
-## ビルド方法
-
-### Linux テスト
-```bash
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
-```
-
-### ファームウェア (microbit)
-```bash
-cmake -B build/fw -DTARGET_ARCH=microbit
-cmake --build build/fw
+P0.00  SPEAKER (PWM)          P0.21  ROW1
+P0.05  MIC_IN (ADC AIN3)      P0.22  ROW2
+P0.06  UART_TX                 P0.15  ROW3
+P0.08  I2C_SCL                 P0.24  ROW4
+P0.11  COL2                    P0.19  ROW5
+P0.14  BUTTON_A               P0.28  COL1
+P0.16  I2C_SDA                P0.31  COL3
+P0.20  RUN_MIC                P1.05  COL4
+P0.23  BUTTON_B               P0.30  COL5
+P0.25  SENSOR_INT             P1.04  FACE_TOUCH
+P1.08  UART_RX
 ```
