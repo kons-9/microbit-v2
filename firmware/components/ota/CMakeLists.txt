@@ -11,7 +11,10 @@ target_include_directories(ota
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(ota PRIVATE ble)
+target_link_libraries(ota
+    PUBLIC  sysconfig
+    PRIVATE ble
+)
 
 if(TARGET_ARCH STREQUAL "microbit")
     target_sources(ota PRIVATE src/arch/microbit/ota_microbit.c)

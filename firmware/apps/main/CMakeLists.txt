@@ -6,6 +6,7 @@ target_link_libraries(app_main.elf
     PRIVATE
         template
         utkernel_cpp
+        crash
 )
 
 # リンカスクリプト

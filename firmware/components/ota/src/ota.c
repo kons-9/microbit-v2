@@ -57,8 +57,8 @@ ota_state_t ota_get_state(void) {
     return s_state;
 }
 
-int ota_switch_mode(ota_boot_mode_t mode) {
-    if (mode == OTA_BOOT_APP && s_state != OTA_STATE_COMPLETE) {
+int ota_switch_mode(sysconfig_boot_mode_t mode) {
+    if (mode == SYSCONFIG_BOOT_APP && s_state != OTA_STATE_COMPLETE) {
         return OTA_ERR_STATE;
     }
     ota_arch_reboot(mode);

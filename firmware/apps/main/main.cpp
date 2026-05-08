@@ -1,7 +1,5 @@
-extern "C" {
 #include <tk/tkernel.h>
 #include <tm/tmonitor.h>
-}
 
 /* ---------------------------------------------------------
  * Sample User Program

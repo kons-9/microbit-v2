@@ -1,5 +1,7 @@
+add_subdirectory(sysconfig)
 add_subdirectory(template)
 add_subdirectory(ble)
+add_subdirectory(crash)
 add_subdirectory(ota)
 add_subdirectory(utkernel-cpp)
 add_subdirectory(drivers)

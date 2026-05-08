@@ -6,7 +6,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "ota.h"
+#include <sysconfig.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,7 +43,7 @@ uint32_t ota_arch_get_app_slot_size(void);
 /**
  * 指定モードのブートフラグを設定し再起動
  */
-void ota_arch_reboot(ota_boot_mode_t mode);
+void ota_arch_reboot(sysconfig_boot_mode_t mode);
 
 #ifdef __cplusplus
 }

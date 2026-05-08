@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <sysconfig.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,12 +22,11 @@ extern "C" {
 #define OTA_ERR_CHECKSUM -2 /**< チェックサム不一致 */
 #define OTA_ERR_SIZE -3     /**< イメージサイズ超過 */
 
-/* ---- Boot Mode ---- */
+/* ---- Boot Mode (sysconfig で一元定義) ---- */
 
-typedef enum {
-    OTA_BOOT_APP = 0, /**< メインアプリで起動 */
-    OTA_BOOT_UPDATER, /**< updaterモードで起動 (未書き込み/不正値時のデフォルト) */
-} ota_boot_mode_t;
+typedef sysconfig_boot_mode_t ota_boot_mode_t;
+#define OTA_BOOT_APP SYSCONFIG_BOOT_APP
+#define OTA_BOOT_UPDATER SYSCONFIG_BOOT_UPDATER
 
 /* ---- OTA State ---- */
 
@@ -87,10 +87,10 @@ ota_state_t ota_get_state(void);
  * OTA_BOOT_APP: OTA_STATE_COMPLETE時のみ許可。成功時はリセットし返らない。
  * OTA_BOOT_UPDATER: 常に許可。成功時はリセットし返らない。
  *
- * @param mode  OTA_BOOT_APP or OTA_BOOT_UPDATER
+ * @param mode  SYSCONFIG_BOOT_APP or SYSCONFIG_BOOT_UPDATER
  * @return OTA_ERR_STATE (前提条件未達時のみ返る。成功時は返らない)
  */
-int ota_switch_mode(ota_boot_mode_t mode);
+int ota_switch_mode(sysconfig_boot_mode_t mode);
 
 /**
  * OTA状態をリセット (エラー後のリトライ用)

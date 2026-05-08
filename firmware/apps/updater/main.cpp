@@ -39,7 +39,7 @@ static void updater_task(INT stacd, void *exinf) {
     }
 
     tm_putstring((UB *)"[updater] OTA complete. Rebooting into app...\n");
-    ota_switch_mode(OTA_BOOT_APP);
+    ota_switch_mode(SYSCONFIG_BOOT_APP);
 
 fail:
     tm_putstring((UB *)"[updater] Fatal error. Halting.\n");
