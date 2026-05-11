@@ -7,9 +7,11 @@ EXTRA_CXX_FLAGS += $(if $(filter 1,$(IS_DEBUG)),-DDEBUG -O0 -g)
 
 MAIN_BIN := main/apps/main/app_main.elf
 UPDATER_BIN := updater/apps/updater/app_updater.elf
+FACTORY_TEST_BIN := factory-test/apps/factory-test/app_main.elf
 
 MAIN:=build/$(BUILD_TYPE)/$(MAIN_BIN)
 UPDATER:=build/$(BUILD_TYPE)/$(UPDATER_BIN)
+FACTORY_TEST:=build/$(BUILD_TYPE)/$(FACTORY_TEST_BIN)
 
 # 外部から追加コンパイルフラグを渡す (e.g. make EXTRA_C_FLAGS="-DDEBUG_CRASH -O0")
 EXTRA_C_FLAGS ?=
@@ -23,7 +25,7 @@ ifneq ($(EXTRA_CXX_FLAGS),)
   CMAKE_EXTRA_ARGS += -DEXTRA_CXX_FLAGS="$(EXTRA_CXX_FLAGS)"
 endif
 
-.PHONY: all build build-updater clean erase-flash flash flash-updater format $(MAIN) $(UPDATER)
+.PHONY: all build build-updater build-factory-test clean erase-flash flash flash-updater format $(MAIN) $(UPDATER) $(FACTORY_TEST)
 
 all: flash flash-updater
 
@@ -33,6 +35,8 @@ format:
 build: $(MAIN)
 
 build-updater: $(UPDATER)
+
+build-factory-test: $(FACTORY_TEST)
 
 clean:
 	rm -rf build
@@ -65,6 +69,10 @@ $(MAIN):
 $(UPDATER):
 	cmake -B build/$(BUILD_TYPE)/updater -DAPP_TARGET=updater $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/updater
+
+$(FACTORY_TEST):
+	cmake -B build/$(BUILD_TYPE)/factory-test -DAPP_TARGET=factory-test $(CMAKE_EXTRA_ARGS)
+	cmake --build build/$(BUILD_TYPE)/factory-test
 
 # ======== Unit Tests ========
 TEST_BUILD_DIR := test/build

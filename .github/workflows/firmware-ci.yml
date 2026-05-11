@@ -45,3 +45,7 @@ jobs:
         working-directory: ./firmware
         run: |
           make build-updater
+      - name: build factory-test
+        working-directory: ./firmware
+        run: |
+          make build-factory-test
