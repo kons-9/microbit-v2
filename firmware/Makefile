@@ -5,13 +5,19 @@ BUILD_TYPE := $(if $(filter 1,$(IS_DEBUG)),debug,release)
 EXTRA_C_FLAGS += $(if $(filter 1,$(IS_DEBUG)),-DDEBUG -O0 -g)
 EXTRA_CXX_FLAGS += $(if $(filter 1,$(IS_DEBUG)),-DDEBUG -O0 -g)
 
+# SoftDevice hex (download from Nordic: nRF5 SDK > s140)
+SOFTDEVICE_HEX := third_party/softdevice/s140_nrf52_7.3.0_softdevice.hex
+SOFTDEVICE_URL := https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/softdevices/s140/s140_nrf52_7.3.0.zip
+
 MAIN_BIN := main/apps/main/app_main.elf
 UPDATER_BIN := updater/apps/updater/app_updater.elf
 FACTORY_TEST_BIN := factory-test/apps/factory-test/app_main.elf
+SAMPLE_BIN := sample/apps/sample/app_main.elf
 
 MAIN:=build/$(BUILD_TYPE)/$(MAIN_BIN)
 UPDATER:=build/$(BUILD_TYPE)/$(UPDATER_BIN)
 FACTORY_TEST:=build/$(BUILD_TYPE)/$(FACTORY_TEST_BIN)
+SAMPLE:=build/$(BUILD_TYPE)/$(SAMPLE_BIN)
 
 # 外部から追加コンパイルフラグを渡す (e.g. make EXTRA_C_FLAGS="-DDEBUG_CRASH -O0")
 EXTRA_C_FLAGS ?=
@@ -25,7 +31,7 @@ ifneq ($(EXTRA_CXX_FLAGS),)
   CMAKE_EXTRA_ARGS += -DEXTRA_CXX_FLAGS="$(EXTRA_CXX_FLAGS)"
 endif
 
-.PHONY: all build build-updater build-factory-test clean erase-flash flash flash-updater format $(MAIN) $(UPDATER) $(FACTORY_TEST)
+.PHONY: all build build-updater build-factory-test build-sample clean erase-flash flash flash-updater flash-sample format $(MAIN) $(UPDATER) $(FACTORY_TEST) $(SAMPLE)
 
 all: flash flash-updater
 
@@ -38,29 +44,38 @@ build-updater: $(UPDATER)
 
 build-factory-test: $(FACTORY_TEST)
 
+build-sample: $(SAMPLE)
+
 clean:
 	rm -rf build
+
+$(SOFTDEVICE_HEX):
+	@echo "Downloading SoftDevice S140 v7.3.0..."
+	@mkdir -p $(dir $@)
+	curl -sL $(SOFTDEVICE_URL) -o /tmp/s140.zip
+	unzip -o -j /tmp/s140.zip "s140_nrf52_7.3.0_softdevice.hex" -d $(dir $@)
+	rm -f /tmp/s140.zip
+	@echo "SoftDevice ready: $@"
 	
 venv:
 	python -m venv venv
 	. venv/bin/activate
 	pip install -r requirements.txt
 
-# only one time
-erase-flash: build venv
-	if [ ! -f "erase-flash-done" ]; then \
-		. venv/bin/activate; \
-		pyocd erase --mass; \
-		touch erase-flash-done; \
-	fi
-
-flash: erase-flash build venv
+flash: build venv $(SOFTDEVICE_HEX)
 	. venv/bin/activate
+	pyocd erase --mass
+	pyocd flash $(SOFTDEVICE_HEX)
 	pyocd flash $(MAIN)
 
-flash-updater: erase-flash build-updater venv
+flash-updater: build-updater venv $(SOFTDEVICE_HEX)
 	. venv/bin/activate
 	pyocd flash $(UPDATER)
+
+flash-sample: build-sample venv
+	. venv/bin/activate
+	pyocd erase --mass
+	pyocd flash $(SAMPLE)
 
 $(MAIN):
 	cmake -B build/$(BUILD_TYPE)/main -DAPP_TARGET=main -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
@@ -73,6 +88,10 @@ $(UPDATER):
 $(FACTORY_TEST):
 	cmake -B build/$(BUILD_TYPE)/factory-test -DAPP_TARGET=factory-test $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/factory-test
+
+$(SAMPLE):
+	cmake -B build/$(BUILD_TYPE)/sample -DAPP_TARGET=sample $(CMAKE_EXTRA_ARGS)
+	cmake --build build/$(BUILD_TYPE)/sample
 
 # ======== Unit Tests ========
 TEST_BUILD_DIR := test/build

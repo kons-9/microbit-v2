@@ -8,3 +8,6 @@ firmware/erase-flash-done
 __pycache__/
 *.pyc
 venv
+
+# SoftDevice binary (download separately)
+firmware/third_party/softdevice/*.hex
