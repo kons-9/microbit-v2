@@ -77,6 +77,11 @@ flash-sample: build-sample venv
 	pyocd erase --mass
 	pyocd flash $(SAMPLE)
 
+flash-factory-test: build-factory-test venv
+	. venv/bin/activate
+	pyocd erase --mass
+	pyocd flash $(FACTORY_TEST)
+
 $(MAIN):
 	cmake -B build/$(BUILD_TYPE)/main -DAPP_TARGET=main -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/main

@@ -40,11 +40,21 @@ static uint8_t s_currentRow = 0;
 
 void led_init(void) {
     for (int32_t i = 0; i < LED_ROWS; i++) {
-        nrf_gpio_cfg_output(s_rowPins[i]);
+        nrf_gpio_cfg(s_rowPins[i],
+                     NRF_GPIO_PIN_DIR_OUTPUT,
+                     NRF_GPIO_PIN_INPUT_DISCONNECT,
+                     NRF_GPIO_PIN_NOPULL,
+                     NRF_GPIO_PIN_H0H1,
+                     NRF_GPIO_PIN_NOSENSE);
         nrf_gpio_pin_clear(s_rowPins[i]);
     }
     for (int32_t i = 0; i < LED_COLS; i++) {
-        nrf_gpio_cfg_output(s_colPins[i]);
+        nrf_gpio_cfg(s_colPins[i],
+                     NRF_GPIO_PIN_DIR_OUTPUT,
+                     NRF_GPIO_PIN_INPUT_DISCONNECT,
+                     NRF_GPIO_PIN_NOPULL,
+                     NRF_GPIO_PIN_H0H1,
+                     NRF_GPIO_PIN_NOSENSE);
         nrf_gpio_pin_set(s_colPins[i]);
     }
     s_currentRow = 0;

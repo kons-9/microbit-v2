@@ -313,7 +313,7 @@ static int app_main() {
     touch_init();
     temperature_init();
 
-    osal::cyclic_timer scanTimer(led_scan_callback, 3);
+    osal::cyclic_timer scanTimer(led_scan_callback, 1);
     scanTimer.start();
 
     TestResult results[NUM_TESTS];
