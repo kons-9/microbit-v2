@@ -17,5 +17,6 @@ BLE(Bluetooth Low Energy)のRSSIを複数ノードから収集し、
 - TDDで開発すること。テストコードも提出すること。
 - testはCatch2またはGoogleTestを使用すること
 - マイコン側はC++20
+- ISR（割り込みハンドラ）コンテキストから `LOG_*` マクロ（`LogOutput`）を呼んではならない。UART 送信がブロッキング（busy-wait）であり、ロックの取得もできないため。
 
 （ここに開発中に見つけた注意事項を追記する）
