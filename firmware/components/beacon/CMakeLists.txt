@@ -17,6 +17,8 @@ target_include_directories(beacon
 target_link_libraries(beacon
     PUBLIC
         shell
+    PRIVATE
+        ble
 )
 
 set_target_properties(beacon PROPERTIES

@@ -11,6 +11,7 @@ target_link_libraries(app_main.elf
         beacon
         shell
         flash_fs
+        uart
 )
 
 # リンカスクリプト
