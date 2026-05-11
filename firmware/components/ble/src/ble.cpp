@@ -78,7 +78,7 @@ int32_t ble_gap_discover(uint8_t own_address_type,
     auto result = ble_arch_scan_start(params->interval, params->window, params->is_passive, on_advertise_received);
     if (result != 0) {
         s_scanning = 0;
-        LOG_E("scan start failed: %d", result);
+        LOG_E("scan start failed: %ld", result);
         return static_cast<int32_t>(BLEError::Hardware);
     }
 
@@ -200,7 +200,7 @@ int32_t ble_gap_advertise_start(uint8_t own_address_type, const BLEGapAdvertiseP
     uint16_t interval = static_cast<uint16_t>((params->interval_min + params->interval_max) / 2);
     result = ble_arch_advertise_start(interval);
     if (result != 0) {
-        LOG_E("advertise start failed: %d", result);
+        LOG_E("advertise start failed: %ld", result);
         return static_cast<int32_t>(BLEError::Hardware);
     }
 

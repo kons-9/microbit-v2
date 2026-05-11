@@ -50,6 +50,12 @@ static uint8_t s_currentRow = 0;
  * Timer (TIMER2 register direct access + µT-Kernel interrupt)
  * ================================================================== */
 
+// TODO: タイマー選択・設定(周期/優先度)を apps 層に移し、LED は scan_tick コールバックの
+//       登録とフレームバッファ更新のみを責務とする。現在のちらつき・不安定の原因調査も必要。
+//       - ISR 内で全 COL を切り替えてから ROW を有効化する順序の見直し
+//       - ISR 優先度と他ペリフェラル(SAADC/RADIO)との競合確認
+//       - フレームバッファ更新時の排他制御(volatile / atomic)
+
 static constexpr uint32_t SCAN_INTERVAL_US = 2000;  // 2ms per row → 10ms/frame = 100Hz
 static constexpr uint32_t TIMER2_IRQ_PRIORITY = 7;
 
@@ -125,7 +131,7 @@ void led_init(void) {
     EnableInt(TIMER2_IRQn, TIMER2_IRQ_PRIORITY);
 
     NRF_TIMER2->TASKS_START = 1;
-    LOG_D("init: TIMER2 started (%u us/row)", SCAN_INTERVAL_US);
+    LOG_D("init: TIMER2 started (%lu us/row)", SCAN_INTERVAL_US);
 }
 
 void led_set(uint8_t row, uint8_t col, bool on) {

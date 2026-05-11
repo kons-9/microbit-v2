@@ -116,11 +116,6 @@ static void write_page_header(uint32_t page_addr, const PageHeader *hdr) {
     flash_fs_arch_write(page_addr, hdr, sizeof(PageHeader));
 }
 
-static bool is_page_erased(uint32_t page_addr) {
-    PageHeader hdr;
-    read_page_header(page_addr, &hdr);
-    return hdr.sequence == ERASED_WORD;
-}
 
 /**
  * @brief ページ内の書き込み末尾位置をスキャンで求める
@@ -212,7 +207,7 @@ int32_t flash_fs_init(void) {
     s_state.base_address[FLASH_FS_FILE_SETTINGS] = SETTINGS_BASE_ADDR;
     s_state.base_address[FLASH_FS_FILE_CALIB] = CALIB_BASE_ADDR;
 
-    LOG_D("init: log=0x%08x settings=0x%08x calib=0x%08x", LOG_BASE_ADDR, SETTINGS_BASE_ADDR, CALIB_BASE_ADDR);
+    LOG_D("init: log=0x%08lx settings=0x%08lx calib=0x%08lx", LOG_BASE_ADDR, SETTINGS_BASE_ADDR, CALIB_BASE_ADDR);
 
     // Stream ファイルの状態を復元
     for (uint8_t i = 0; i < FLASH_FS_FILE_COUNT; ++i) {
@@ -222,7 +217,7 @@ int32_t flash_fs_init(void) {
     }
 
     s_state.initialized = true;
-    LOG_D("init done (stream page=%u offset=%u)",
+    LOG_D("init done (stream page=%lu offset=%lu)",
           s_state.stream[FLASH_FS_FILE_LOG].current_page,
           s_state.stream[FLASH_FS_FILE_LOG].write_offset);
     return 0;

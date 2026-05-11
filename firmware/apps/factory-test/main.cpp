@@ -316,7 +316,7 @@ static int app_main() {
     bool allPass = true;
 
     for (int32_t i = 0; i < NUM_TESTS; ++i) {
-        LOG_D("test[%d] %s begin", i, s_tests[i].m_name);
+        LOG_D("test[%ld] %s begin", i, s_tests[i].m_name);
         show_test_number(i + 1);
         osal::task::sleep_for(500);
 
@@ -324,9 +324,9 @@ static int app_main() {
 
         if (results[i] != TestResult::Pass) {
             allPass = false;
-            LOG_W("test[%d] %s FAIL", i, s_tests[i].m_name);
+            LOG_W("test[%ld] %s FAIL", i, s_tests[i].m_name);
         } else {
-            LOG_D("test[%d] %s PASS", i, s_tests[i].m_name);
+            LOG_D("test[%ld] %s PASS", i, s_tests[i].m_name);
         }
 
         if (i < 4) {

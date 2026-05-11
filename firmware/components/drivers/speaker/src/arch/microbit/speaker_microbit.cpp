@@ -56,7 +56,7 @@ void speaker_tone(uint32_t freq_hz) {
     NRF_PWM0->COUNTERTOP = topValue;
     nrfx_pwm_simple_playback(&s_pwmInstance, &s_pwmSequence, 1, NRFX_PWM_FLAG_LOOP);
     s_playing = true;
-    LOG_D("tone: %u Hz (top=%u)", freq_hz, topValue);
+    LOG_D("tone: %lu Hz (top=%u)", freq_hz, topValue);
 }
 
 void speaker_stop(void) {
