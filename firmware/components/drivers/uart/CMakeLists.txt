@@ -10,7 +10,7 @@ target_include_directories(uart
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/arch
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 if(NOT DEFINED TARGET_ARCH)

@@ -40,7 +40,7 @@ inline bool task::create(entry_t entry, const config &cfg) {
     T_CTSK ctsk = {};
     ctsk.exinf = ctx;
     ctsk.tskatr = TA_HLNG | TA_RNG0;
-    ctsk.task = detail::task_entry_wrapper;
+    ctsk.task = reinterpret_cast<FP>(detail::task_entry_wrapper);
     ctsk.itskpri = static_cast<PRI>(cfg.priority);
     ctsk.stksz = static_cast<SZ>(cfg.stack_size);
 
