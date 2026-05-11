@@ -67,6 +67,14 @@ static void scan_tick_handler(nrf_timer_event_t event, void *) {
     nrf_gpio_pin_set(s_rowPins[s_currentRow]);
 }
 
+/**
+ * nrfx v4 ではインスタンス別 IRQ グルーコードが自動生成されない。
+ * TIMER2 割り込みを nrfx ドライバに転送する。
+ */
+extern "C" void TIMER2_IRQHandler(void) {
+    nrfx_timer_irq_handler(&s_timer);
+}
+
 /* ==================================================================
  * API
  * ================================================================== */

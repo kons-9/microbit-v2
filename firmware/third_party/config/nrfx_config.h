@@ -7,6 +7,9 @@
 #ifndef NRFX_CONFIG_H__
 #define NRFX_CONFIG_H__
 
+/* IRQ handler name mapping (must precede driver enables) */
+#include <soc/nrfx_irqs.h>
+
 /* GPIO / GPIOTE */
 #define NRFX_GPIOTE_ENABLED 1
 #define NRFX_GPIOTE0_ENABLED 1

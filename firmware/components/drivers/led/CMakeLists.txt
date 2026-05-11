@@ -22,6 +22,9 @@ if(TARGET_ARCH STREQUAL "microbit")
         src/arch/microbit/led_microbit.cpp
     )
     target_link_libraries(led PRIVATE nrfx log)
+    # Force linker to pull TIMER2_IRQHandler from this archive
+    # (overrides the weak default in startup code)
+    target_link_options(led INTERFACE -Wl,-u,TIMER2_IRQHandler)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()

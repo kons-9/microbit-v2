@@ -47,6 +47,10 @@ typedef volatile uint32_t nrfx_atomic_t;
 #define NRFX_ATOMIC_FETCH_XOR(p_data, value)  nrfx_atomic_u32_fetch_xor(p_data, value)
 #define NRFX_ATOMIC_FETCH_STORE(p_data, value) nrfx_atomic_u32_fetch_store(p_data, value)
 
+/*--- Bit counting (CLZ / CTZ) ---*/
+#define NRFX_CLZ(value)  __CLZ(value)
+#define NRFX_CTZ(value)  __CLZ(__RBIT(value))
+
 /*--- Event / PPI (unused, stubs) ---*/
 #define NRFX_EVENT_READBACK_ENABLED  0
 
