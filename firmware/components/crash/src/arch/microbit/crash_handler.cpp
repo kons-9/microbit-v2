@@ -121,8 +121,7 @@ CRASH_TRAMPOLINE(NMI_Handler, static_cast<uint32_t>(CrashFaultType::NMI))
  * ================================================================== */
 
 int32_t crash_info_read(CrashInfo *info) {
-    const auto *source = reinterpret_cast<const uint32_t *>(
-        sysconfig_get_settings_address() + 4);
+    const auto *source = reinterpret_cast<const uint32_t *>(sysconfig_get_settings_address() + 4);
 
     if (source[0] != CRASH_INFO_MAGIC) {
         return -1;
