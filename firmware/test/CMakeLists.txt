@@ -21,6 +21,16 @@ enable_testing()
 include(Catch)
 
 # ===== コンポーネントライブラリ =====
+
+# Stub log library for Linux test builds (no-op macros)
+add_library(log INTERFACE)
+target_include_directories(log INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/stubs/log)
+
+# Stub ble library for Linux test builds (beacon depends on ble headers)
+add_library(ble INTERFACE)
+target_include_directories(ble INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/ble/include)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/osal
                  ${CMAKE_BINARY_DIR}/lib/osal)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/signal
@@ -29,6 +39,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/template
                  ${CMAKE_BINARY_DIR}/lib/template)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/flash_fs
                  ${CMAKE_BINARY_DIR}/lib/flash_fs)
+
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/shell
                  ${CMAKE_BINARY_DIR}/lib/shell)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/beacon

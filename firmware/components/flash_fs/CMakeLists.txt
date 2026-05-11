@@ -26,6 +26,7 @@ elseif(TARGET_ARCH STREQUAL "linux")
     target_sources(flash_fs PRIVATE
         src/arch/linux/flash_fs_linux.cpp
     )
+    target_link_libraries(flash_fs PRIVATE log)
     target_compile_definitions(flash_fs PRIVATE FLASH_FS_ARCH_LINUX)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")

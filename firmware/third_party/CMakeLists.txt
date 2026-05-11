@@ -18,7 +18,7 @@ if(TARGET_ARCH STREQUAL "microbit")
 
     add_library(nrfx STATIC ${NRFX_SOURCES})
 
-    target_include_directories(nrfx PUBLIC
+    target_include_directories(nrfx SYSTEM PUBLIC
         ${NRFX_DIR}
         ${NRFX_DIR}/hal
         ${NRFX_DIR}/drivers

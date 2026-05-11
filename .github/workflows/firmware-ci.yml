@@ -49,3 +49,17 @@ jobs:
         working-directory: ./firmware
         run: |
           make build-factory-test
+
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: setup ubuntu
+        run: |
+          sudo apt update
+          sudo apt install -y cmake build-essential
+      - name: run tests
+        working-directory: ./firmware
+        run: make test

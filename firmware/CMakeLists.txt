@@ -46,5 +46,8 @@ endif()
 # ==== サブディレクトリ ====
 add_subdirectory(third_party)
 add_subdirectory(kernel)
+
+# Treat warnings as errors for project code (excludes third_party/kernel)
+add_compile_options(-Werror)
 add_subdirectory(components)
 add_subdirectory(${APP_DIR})
