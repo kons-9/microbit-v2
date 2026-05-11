@@ -2,7 +2,9 @@
  * @file led_microbit.cpp
  * @brief micro:bit v2.2 LED 5x5 マトリクス GPIO 多重化実装
  *
- * TIMER2 ハードウェアタイマ割り込みで自動スキャンする。
+ * TIMER2 レジスタ直接操作 + µT-Kernel tk_def_int で自動スキャンする。
+ * µT-Kernel が VTOR を独自ベクターテーブル(exchdr_tbl)に向けるため、
+ * nrfx ドライバではなく tk_def_int で割り込みハンドラを登録する。
  * apps/ 層からタイマーを供給する必要はない。
  */
 
@@ -11,8 +13,11 @@
 #define LOG_TAG "LED"
 #include "log.h"
 
+#include "nrf.h"
 #include "nrf_gpio.h"
-#include "nrfx_timer.h"
+
+#include <tk/tkernel.h>
+#include <tk/syslib.h>
 
 /* ==================================================================
  * Pin Definitions
@@ -42,15 +47,19 @@ static uint8_t s_framebuf[LED_ROWS] = {0};
 static uint8_t s_currentRow = 0;
 
 /* ==================================================================
- * Timer
+ * Timer (TIMER2 register direct access + µT-Kernel interrupt)
  * ================================================================== */
 
-static nrfx_timer_t s_timer = NRFX_TIMER_INSTANCE(NRF_TIMER2);
-
 static constexpr uint32_t SCAN_INTERVAL_US = 2000;  // 2ms per row → 10ms/frame = 100Hz
+static constexpr uint32_t TIMER2_IRQ_PRIORITY = 7;
 
-static void scan_tick_handler(nrf_timer_event_t event, void *) {
-    (void)event;
+static void scan_tick_isr(UINT intno) {
+    (void)intno;
+
+    if (NRF_TIMER2->EVENTS_COMPARE[0] == 0) {
+        return;
+    }
+    NRF_TIMER2->EVENTS_COMPARE[0] = 0;
 
     nrf_gpio_pin_clear(s_rowPins[s_currentRow]);
 
@@ -65,14 +74,6 @@ static void scan_tick_handler(nrf_timer_event_t event, void *) {
     }
 
     nrf_gpio_pin_set(s_rowPins[s_currentRow]);
-}
-
-/**
- * nrfx v4 ではインスタンス別 IRQ グルーコードが自動生成されない。
- * TIMER2 割り込みを nrfx ドライバに転送する。
- */
-extern "C" void TIMER2_IRQHandler(void) {
-    nrfx_timer_irq_handler(&s_timer);
 }
 
 /* ==================================================================
@@ -101,20 +102,29 @@ void led_init(void) {
     }
     s_currentRow = 0;
 
-    nrfx_timer_config_t config = NRFX_TIMER_DEFAULT_CONFIG(1000000);  // 1 MHz
-    config.bit_width = NRF_TIMER_BIT_WIDTH_32;
-    int err = nrfx_timer_init(&s_timer, &config, scan_tick_handler);
-    if (err != 0) {
-        LOG_E("TIMER2 init failed: %d", err);
+    /* Register interrupt handler via µT-Kernel */
+    T_DINT dint;
+    dint.intatr = TA_HLNG;
+    dint.inthdr = reinterpret_cast<FP>(scan_tick_isr);
+    ER err = tk_def_int(TIMER2_IRQn, &dint);
+    if (err < E_OK) {
+        LOG_E("tk_def_int failed: %d", static_cast<int>(err));
         return;
     }
 
-    nrfx_timer_extended_compare(&s_timer,
-                                NRF_TIMER_CC_CHANNEL0,
-                                SCAN_INTERVAL_US,
-                                NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK,
-                                true);
-    nrfx_timer_enable(&s_timer);
+    /* Configure TIMER2: 1 MHz timer, 32-bit, cyclic compare on CC[0] */
+    NRF_TIMER2->TASKS_STOP = 1;
+    NRF_TIMER2->TASKS_CLEAR = 1;
+    NRF_TIMER2->MODE = TIMER_MODE_MODE_Timer;
+    NRF_TIMER2->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
+    NRF_TIMER2->PRESCALER = 4; /* 16 MHz / 2^4 = 1 MHz */
+    NRF_TIMER2->CC[0] = SCAN_INTERVAL_US;
+    NRF_TIMER2->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
+    NRF_TIMER2->INTENSET = TIMER_INTENSET_COMPARE0_Msk;
+
+    EnableInt(TIMER2_IRQn, TIMER2_IRQ_PRIORITY);
+
+    NRF_TIMER2->TASKS_START = 1;
     LOG_D("init: TIMER2 started (%u us/row)", SCAN_INTERVAL_US);
 }
 
