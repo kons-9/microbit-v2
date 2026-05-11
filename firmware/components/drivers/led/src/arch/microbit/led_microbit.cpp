@@ -45,7 +45,7 @@ static uint8_t s_currentRow = 0;
  * Timer
  * ================================================================== */
 
-static nrfx_timer_t s_timer = NRFX_TIMER_INSTANCE(1);
+static nrfx_timer_t s_timer = NRFX_TIMER_INSTANCE(2);
 
 static constexpr uint32_t SCAN_INTERVAL_US = 2000;  // 2ms per row → 10ms/frame = 100Hz
 

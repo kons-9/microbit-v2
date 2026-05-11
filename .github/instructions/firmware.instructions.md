@@ -18,5 +18,6 @@ BLE(Bluetooth Low Energy)のRSSIを複数ノードから収集し、
 - testはCatch2またはGoogleTestを使用すること
 - マイコン側はC++20
 - ISR（割り込みハンドラ）コンテキストから `LOG_*` マクロ（`LogOutput`）を呼んではならない。UART 送信がブロッキング（busy-wait）であり、ロックの取得もできないため。
+- TIMER1 は BLE アドバタイザ（`ble_microbit.cpp` が直接レジスタ操作）で使用済み。LED スキャンなど他用途には TIMER2 以降を使うこと。
 
 （ここに開発中に見つけた注意事項を追記する）
