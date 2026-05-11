@@ -2,10 +2,9 @@
  * @file led_microbit.cpp
  * @brief micro:bit v2.2 LED 5x5 マトリクス GPIO 多重化実装
  *
- * TIMER2 レジスタ直接操作 + µT-Kernel tk_def_int で自動スキャンする。
- * µT-Kernel が VTOR を独自ベクターテーブル(exchdr_tbl)に向けるため、
- * nrfx ドライバではなく tk_def_int で割り込みハンドラを登録する。
- * apps/ 層からタイマーを供給する必要はない。
+ * GPIO ピン設定とフレームバッファ管理を行う。
+ * タイマーの選択・設定は apps 層の責務。apps 層のタイマー ISR から
+ * led_scan_tick() を周期的に呼び出すことでスキャンが動作する。
  */
 
 #include "led.h"
@@ -13,11 +12,7 @@
 #define LOG_TAG "LED"
 #include "log.h"
 
-#include "nrf.h"
 #include "nrf_gpio.h"
-
-#include <tk/tkernel.h>
-#include <tk/syslib.h>
 
 /* ==================================================================
  * Pin Definitions
@@ -47,26 +42,10 @@ static uint8_t s_framebuf[LED_ROWS] = {0};
 static uint8_t s_currentRow = 0;
 
 /* ==================================================================
- * Timer (TIMER2 register direct access + µT-Kernel interrupt)
+ * Scan logic (called from apps layer timer ISR)
  * ================================================================== */
 
-// TODO: タイマー選択・設定(周期/優先度)を apps 層に移し、LED は scan_tick コールバックの
-//       登録とフレームバッファ更新のみを責務とする。現在のちらつき・不安定の原因調査も必要。
-//       - ISR 内で全 COL を切り替えてから ROW を有効化する順序の見直し
-//       - ISR 優先度と他ペリフェラル(SAADC/RADIO)との競合確認
-//       - フレームバッファ更新時の排他制御(volatile / atomic)
-
-static constexpr uint32_t SCAN_INTERVAL_US = 2000;  // 2ms per row → 10ms/frame = 100Hz
-static constexpr uint32_t TIMER2_IRQ_PRIORITY = 7;
-
-static void scan_tick_isr(UINT intno) {
-    (void)intno;
-
-    if (NRF_TIMER2->EVENTS_COMPARE[0] == 0) {
-        return;
-    }
-    NRF_TIMER2->EVENTS_COMPARE[0] = 0;
-
+void led_scan_tick(void) {
     nrf_gpio_pin_clear(s_rowPins[s_currentRow]);
 
     s_currentRow = static_cast<uint8_t>((s_currentRow + 1) % LED_ROWS);
@@ -108,30 +87,7 @@ void led_init(void) {
     }
     s_currentRow = 0;
 
-    /* Register interrupt handler via µT-Kernel */
-    T_DINT dint;
-    dint.intatr = TA_HLNG;
-    dint.inthdr = reinterpret_cast<FP>(scan_tick_isr);
-    ER err = tk_def_int(TIMER2_IRQn, &dint);
-    if (err < E_OK) {
-        LOG_E("tk_def_int failed: %d", static_cast<int>(err));
-        return;
-    }
-
-    /* Configure TIMER2: 1 MHz timer, 32-bit, cyclic compare on CC[0] */
-    NRF_TIMER2->TASKS_STOP = 1;
-    NRF_TIMER2->TASKS_CLEAR = 1;
-    NRF_TIMER2->MODE = TIMER_MODE_MODE_Timer;
-    NRF_TIMER2->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
-    NRF_TIMER2->PRESCALER = 4; /* 16 MHz / 2^4 = 1 MHz */
-    NRF_TIMER2->CC[0] = SCAN_INTERVAL_US;
-    NRF_TIMER2->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
-    NRF_TIMER2->INTENSET = TIMER_INTENSET_COMPARE0_Msk;
-
-    EnableInt(TIMER2_IRQn, TIMER2_IRQ_PRIORITY);
-
-    NRF_TIMER2->TASKS_START = 1;
-    LOG_D("init: TIMER2 started (%lu us/row)", SCAN_INTERVAL_US);
+    LOG_D("init: GPIO configured (timer setup is apps layer responsibility)");
 }
 
 void led_set(uint8_t row, uint8_t col, bool on) {

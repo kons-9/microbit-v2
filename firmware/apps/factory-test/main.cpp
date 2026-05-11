@@ -20,8 +20,53 @@
 #include <touch.h>
 #include <temperature.h>
 
+#include <nrf.h>
+#include <tk/tkernel.h>
+#include <tk/syslib.h>
+
 #include <cstdint>
 #include <cstring>
+
+/* ==================================================================
+ * LED scan timer (TIMER2)
+ * ================================================================== */
+
+static constexpr uint32_t LED_SCAN_INTERVAL_US = 2000;
+static constexpr uint32_t LED_TIMER_IRQ_PRIORITY = 7;
+
+static void led_timer_isr(UINT intno) {
+    (void)intno;
+    if (NRF_TIMER2->EVENTS_COMPARE[0] == 0) {
+        return;
+    }
+    NRF_TIMER2->EVENTS_COMPARE[0] = 0;
+    led_scan_tick();
+}
+
+static bool led_timer_init(void) {
+    T_DINT dint;
+    dint.intatr = TA_HLNG;
+    dint.inthdr = reinterpret_cast<FP>(led_timer_isr);
+    if (auto err = tk_def_int(TIMER2_IRQn, &dint); err < E_OK) {
+        LOG_E("tk_def_int(TIMER2) failed: %ld", static_cast<int32_t>(err));
+        return false;
+    }
+
+    NRF_TIMER2->TASKS_STOP = 1;
+    NRF_TIMER2->TASKS_CLEAR = 1;
+    NRF_TIMER2->MODE = TIMER_MODE_MODE_Timer;
+    NRF_TIMER2->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
+    NRF_TIMER2->PRESCALER = 4; /* 16 MHz / 2^4 = 1 MHz */
+    NRF_TIMER2->CC[0] = LED_SCAN_INTERVAL_US;
+    NRF_TIMER2->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
+    NRF_TIMER2->INTENSET = TIMER_INTENSET_COMPARE0_Msk;
+
+    EnableInt(TIMER2_IRQn, LED_TIMER_IRQ_PRIORITY);
+    NRF_TIMER2->TASKS_START = 1;
+
+    LOG_D("LED timer started (TIMER2, %lu us/row)", LED_SCAN_INTERVAL_US);
+    return true;
+}
 
 /* ==================================================================
  * テスト結果
@@ -302,6 +347,7 @@ static int app_main() {
     LOG_I("factory-test start");
 
     led_init();
+    led_timer_init();
     speaker_init();
     microphone_init();
     accelerometer_init();

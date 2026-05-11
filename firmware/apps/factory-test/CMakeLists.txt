@@ -15,6 +15,7 @@ target_link_libraries(app_main.elf
         button
         touch
         temperature
+        nrfx
 )
 
 # リンカスクリプト (standalone: SoftDevice不要)
