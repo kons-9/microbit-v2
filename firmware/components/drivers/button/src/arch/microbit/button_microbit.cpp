@@ -5,6 +5,9 @@
 
 #include "button.h"
 
+#define LOG_TAG "BTN"
+#include "log.h"
+
 #include "nrf_gpio.h"
 
 #include <tk/tkernel.h>
@@ -28,6 +31,7 @@ static constexpr uint32_t POLL_INTERVAL_MS = 10;
 void button_init(void) {
     nrf_gpio_cfg_input(BUTTON_A_PIN, NRF_GPIO_PIN_NOPULL);
     nrf_gpio_cfg_input(BUTTON_B_PIN, NRF_GPIO_PIN_NOPULL);
+    LOG_D("init: A=P0.14, B=P0.23");
 }
 
 bool button_is_pressed(uint8_t id) {

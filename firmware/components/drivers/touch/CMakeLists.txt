@@ -21,7 +21,7 @@ if(TARGET_ARCH STREQUAL "microbit")
     target_sources(touch PRIVATE
         src/arch/microbit/touch_microbit.cpp
     )
-    target_link_libraries(touch PRIVATE nrfx kernel)
+    target_link_libraries(touch PRIVATE nrfx kernel log)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()

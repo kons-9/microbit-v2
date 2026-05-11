@@ -21,7 +21,7 @@ if(TARGET_ARCH STREQUAL "microbit")
     target_sources(flash_fs PRIVATE
         src/arch/microbit/flash_fs_microbit.cpp
     )
-    target_link_libraries(flash_fs PRIVATE nrfx)
+    target_link_libraries(flash_fs PRIVATE nrfx log)
 elseif(TARGET_ARCH STREQUAL "linux")
     target_sources(flash_fs PRIVATE
         src/arch/linux/flash_fs_linux.cpp

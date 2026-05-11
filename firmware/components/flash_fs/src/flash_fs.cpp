@@ -23,6 +23,9 @@
 #include "flash_fs.h"
 #include "arch/flash_fs_arch.h"
 
+#define LOG_TAG "FFS"
+#include "log.h"
+
 #include <cstring>
 
 /* ================================================================== */
@@ -209,6 +212,8 @@ int32_t flash_fs_init(void) {
     s_state.base_address[FLASH_FS_FILE_SETTINGS] = SETTINGS_BASE_ADDR;
     s_state.base_address[FLASH_FS_FILE_CALIB] = CALIB_BASE_ADDR;
 
+    LOG_D("init: log=0x%08x settings=0x%08x calib=0x%08x", LOG_BASE_ADDR, SETTINGS_BASE_ADDR, CALIB_BASE_ADDR);
+
     // Stream ファイルの状態を復元
     for (uint8_t i = 0; i < FLASH_FS_FILE_COUNT; ++i) {
         if (FILE_TABLE[i].mode == FLASH_FS_MODE_STREAM) {
@@ -217,6 +222,9 @@ int32_t flash_fs_init(void) {
     }
 
     s_state.initialized = true;
+    LOG_D("init done (stream page=%u offset=%u)",
+          s_state.stream[FLASH_FS_FILE_LOG].current_page,
+          s_state.stream[FLASH_FS_FILE_LOG].write_offset);
     return 0;
 }
 

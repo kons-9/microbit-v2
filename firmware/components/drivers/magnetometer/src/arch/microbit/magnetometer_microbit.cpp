@@ -5,6 +5,9 @@
 
 #include "magnetometer.h"
 
+#define LOG_TAG "MAG"
+#include "log.h"
+
 #include "nrf_gpio.h"
 #include "nrfx_twim.h"
 
@@ -59,7 +62,9 @@ bool magnetometer_init(void) {
     nrfx_twim_init(&s_twiInstance, &config, nullptr, nullptr);
     nrfx_twim_enable(&s_twiInstance);
 
-    if (magnetometer_who_am_i() != LSM303AGR_MAG_ID) {
+    uint8_t id = magnetometer_who_am_i();
+    if (id != LSM303AGR_MAG_ID) {
+        LOG_E("WHO_AM_I mismatch: got 0x%02x, expected 0x%02x", id, LSM303AGR_MAG_ID);
         return false;
     }
 
@@ -67,6 +72,7 @@ bool magnetometer_init(void) {
     write_register(REG_CFG_REG_B_M, 0x02);
     write_register(REG_CFG_REG_C_M, 0x10);
 
+    LOG_D("init ok (WHO_AM_I=0x%02x)", id);
     return true;
 }
 

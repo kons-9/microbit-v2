@@ -19,6 +19,7 @@ target_link_libraries(beacon
         shell
     PRIVATE
         ble
+        log
 )
 
 set_target_properties(beacon PROPERTIES

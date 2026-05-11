@@ -7,6 +7,9 @@
 #include "ble.h"
 #include "shell.h"
 
+#define LOG_TAG "BEACON"
+#include "log.h"
+
 #include <cstring>
 #include <cstdlib>
 
@@ -157,6 +160,7 @@ int32_t init(const Config *config) {
     }
 
     s_initialized = 1;
+    LOG_D("init: interval=%u ms, tx_power=%d", s_config.interval_ms, s_config.tx_power);
     return ble_init();
 }
 
@@ -167,10 +171,12 @@ int32_t start(void) {
     if (is_active()) {
         return static_cast<int32_t>(BLEError::Busy);
     }
+    LOG_D("start advertising");
     return start_advertising();
 }
 
 int32_t stop(void) {
+    LOG_D("stop");
     return ble_gap_advertise_stop();
 }
 

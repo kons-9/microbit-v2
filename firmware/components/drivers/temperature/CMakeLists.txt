@@ -21,7 +21,7 @@ if(TARGET_ARCH STREQUAL "microbit")
     target_sources(temperature PRIVATE
         src/arch/microbit/temperature_microbit.cpp
     )
-    target_link_libraries(temperature PRIVATE nrfx)
+    target_link_libraries(temperature PRIVATE nrfx log)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()

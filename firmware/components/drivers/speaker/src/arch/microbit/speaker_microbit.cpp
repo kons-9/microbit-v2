@@ -5,6 +5,9 @@
 
 #include "speaker.h"
 
+#define LOG_TAG "SPK"
+#include "log.h"
+
 #include "nrf_gpio.h"
 #include "nrfx_pwm.h"
 
@@ -32,6 +35,7 @@ void speaker_init(void) {
 
     nrfx_pwm_init(&s_pwmInstance, &config, nullptr, nullptr);
     s_playing = false;
+    LOG_D("init: PWM0, pin=P0.00");
 }
 
 void speaker_tone(uint32_t freq_hz) {
@@ -52,11 +56,13 @@ void speaker_tone(uint32_t freq_hz) {
     NRF_PWM0->COUNTERTOP = topValue;
     nrfx_pwm_simple_playback(&s_pwmInstance, &s_pwmSequence, 1, NRFX_PWM_FLAG_LOOP);
     s_playing = true;
+    LOG_D("tone: %u Hz (top=%u)", freq_hz, topValue);
 }
 
 void speaker_stop(void) {
     nrfx_pwm_stop(&s_pwmInstance, false);
     s_playing = false;
+    LOG_D("stop");
 }
 
 bool speaker_is_playing(void) {

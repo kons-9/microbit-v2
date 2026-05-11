@@ -21,7 +21,7 @@ if(TARGET_ARCH STREQUAL "microbit")
     target_sources(magnetometer PRIVATE
         src/arch/microbit/magnetometer_microbit.cpp
     )
-    target_link_libraries(magnetometer PRIVATE nrfx)
+    target_link_libraries(magnetometer PRIVATE nrfx log)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()

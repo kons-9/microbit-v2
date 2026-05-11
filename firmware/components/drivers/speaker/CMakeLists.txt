@@ -21,7 +21,7 @@ if(TARGET_ARCH STREQUAL "microbit")
     target_sources(speaker PRIVATE
         src/arch/microbit/speaker_microbit.cpp
     )
-    target_link_libraries(speaker PRIVATE nrfx)
+    target_link_libraries(speaker PRIVATE nrfx log)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()

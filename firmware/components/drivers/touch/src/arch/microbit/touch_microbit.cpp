@@ -5,6 +5,9 @@
 
 #include "touch.h"
 
+#define LOG_TAG "TOUCH"
+#include "log.h"
+
 #include "nrf_gpio.h"
 
 #include <tk/tkernel.h>
@@ -15,6 +18,7 @@ static constexpr uint32_t POLL_INTERVAL_MS = 10;
 
 void touch_init(void) {
     nrf_gpio_cfg_input(FACE_TOUCH_PIN, NRF_GPIO_PIN_NOPULL);
+    LOG_D("init: LOGO=P1.04");
 }
 
 bool touch_is_touched(void) {

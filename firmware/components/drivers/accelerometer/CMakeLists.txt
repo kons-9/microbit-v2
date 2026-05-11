@@ -21,7 +21,7 @@ if(TARGET_ARCH STREQUAL "microbit")
     target_sources(accelerometer PRIVATE
         src/arch/microbit/accelerometer_microbit.cpp
     )
-    target_link_libraries(accelerometer PRIVATE nrfx)
+    target_link_libraries(accelerometer PRIVATE nrfx log)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()

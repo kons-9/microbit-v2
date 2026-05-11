@@ -5,6 +5,9 @@
 
 #include "accelerometer.h"
 
+#define LOG_TAG "ACCEL"
+#include "log.h"
+
 #include "nrf_gpio.h"
 #include "nrfx_twim.h"
 
@@ -57,11 +60,14 @@ bool accelerometer_init(void) {
     config.frequency = NRF_TWIM_FREQ_400K;
 
     if (nrfx_twim_init(&s_twiInstance, &config, nullptr, nullptr) != 0) {
+        LOG_E("I2C init failed");
         return false;
     }
     nrfx_twim_enable(&s_twiInstance);
 
-    if (accelerometer_who_am_i() != LSM303AGR_ACCEL_ID) {
+    uint8_t id = accelerometer_who_am_i();
+    if (id != LSM303AGR_ACCEL_ID) {
+        LOG_E("WHO_AM_I mismatch: got 0x%02x, expected 0x%02x", id, LSM303AGR_ACCEL_ID);
         return false;
     }
 
@@ -69,6 +75,7 @@ bool accelerometer_init(void) {
     write_register(REG_CTRL_REG4, 0x08);
     s_currentRange = 0;
 
+    LOG_D("init ok (WHO_AM_I=0x%02x)", id);
     return true;
 }
 

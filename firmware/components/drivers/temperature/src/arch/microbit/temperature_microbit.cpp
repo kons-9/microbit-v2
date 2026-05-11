@@ -5,10 +5,13 @@
 
 #include "temperature.h"
 
+#define LOG_TAG "TEMP"
+#include "log.h"
+
 #include "nrf.h"
 
 void temperature_init(void) {
-    /* TEMP peripheral は特別な初期化不要 */
+    LOG_D("init: nRF52 TEMP peripheral");
 }
 
 int32_t temperature_read_raw(void) {
@@ -27,5 +30,7 @@ int32_t temperature_read_raw(void) {
 }
 
 int8_t temperature_read(void) {
-    return static_cast<int8_t>(temperature_read_raw() / 4);
+    int8_t temp = static_cast<int8_t>(temperature_read_raw() / 4);
+    LOG_D("read: %d C", temp);
+    return temp;
 }

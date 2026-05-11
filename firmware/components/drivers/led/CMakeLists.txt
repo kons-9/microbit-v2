@@ -21,7 +21,7 @@ if(TARGET_ARCH STREQUAL "microbit")
     target_sources(led PRIVATE
         src/arch/microbit/led_microbit.cpp
     )
-    target_link_libraries(led PRIVATE nrfx)
+    target_link_libraries(led PRIVATE nrfx log)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()

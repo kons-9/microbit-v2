@@ -9,6 +9,9 @@
 #include "ble.h"
 #include "arch/ble_arch.h"
 
+#define LOG_TAG "BLE"
+#include "log.h"
+
 #include <cstring>
 
 /* ==================================================================
@@ -49,6 +52,7 @@ int32_t ble_init(void) {
     s_scanning = 0;
     s_callback = nullptr;
     s_callbackArgument = nullptr;
+    LOG_D("init");
     return ble_arch_init();
 }
 
@@ -74,9 +78,11 @@ int32_t ble_gap_discover(uint8_t own_address_type,
     auto result = ble_arch_scan_start(params->interval, params->window, params->is_passive, on_advertise_received);
     if (result != 0) {
         s_scanning = 0;
+        LOG_E("scan start failed: %d", result);
         return static_cast<int32_t>(BLEError::Hardware);
     }
 
+    LOG_D("scan started (interval=%u window=%u passive=%d)", params->interval, params->window, params->is_passive);
     return static_cast<int32_t>(BLEError::Success);
 }
 
@@ -87,6 +93,7 @@ int32_t ble_gap_discover_cancel(void) {
 
     ble_arch_scan_stop();
     s_scanning = 0;
+    LOG_D("scan stopped");
 
     /* discovery_complete イベント通知 */
     if (s_callback != nullptr) {
@@ -193,10 +200,12 @@ int32_t ble_gap_advertise_start(uint8_t own_address_type, const BLEGapAdvertiseP
     uint16_t interval = static_cast<uint16_t>((params->interval_min + params->interval_max) / 2);
     result = ble_arch_advertise_start(interval);
     if (result != 0) {
+        LOG_E("advertise start failed: %d", result);
         return static_cast<int32_t>(BLEError::Hardware);
     }
 
     s_advertising = 1;
+    LOG_D("advertise started (interval=%u, data_len=%u)", interval, s_advertiseDataLength);
     return static_cast<int32_t>(BLEError::Success);
 }
 
@@ -206,6 +215,7 @@ int32_t ble_gap_advertise_stop(void) {
     }
     ble_arch_advertise_stop();
     s_advertising = 0;
+    LOG_D("advertise stopped");
     return static_cast<int32_t>(BLEError::Success);
 }
 

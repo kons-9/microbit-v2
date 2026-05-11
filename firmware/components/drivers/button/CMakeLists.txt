@@ -21,7 +21,7 @@ if(TARGET_ARCH STREQUAL "microbit")
     target_sources(button PRIVATE
         src/arch/microbit/button_microbit.cpp
     )
-    target_link_libraries(button PRIVATE nrfx kernel)
+    target_link_libraries(button PRIVATE nrfx kernel log)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()
