@@ -32,7 +32,7 @@
  * ================================================================== */
 
 static constexpr uint32_t LED_SCAN_INTERVAL_US = 2000;
-static constexpr uint32_t LED_TIMER_IRQ_PRIORITY = 7;
+static constexpr uint32_t LED_TIMER_IRQ_PRIORITY = 3;
 
 static void led_timer_isr(UINT intno) {
     (void)intno;
@@ -89,10 +89,6 @@ static void clear_frame() {
     led_set_frame(s_frameBuf);
 }
 
-static void fill_frame() {
-    led_set_frame(LED_SYM_FULL);
-}
-
 static void show_char(char c) {
     const auto *pat = led_font_get(c);
     if (pat != nullptr) {
@@ -106,16 +102,6 @@ static void show_check() {
 
 static void show_cross() {
     led_set_frame(LED_SYM_CROSS);
-}
-
-static void show_test_number(int32_t n) {
-    if (n >= 0 && n <= 9) {
-        show_char(static_cast<char>('0' + n));
-    } else {
-        clear_frame();
-        s_frameBuf[0] = static_cast<uint8_t>(n & 0x1F);
-        led_set_frame(s_frameBuf);
-    }
 }
 
 static void show_bar(int32_t level) {
@@ -158,6 +144,7 @@ static void show_result_row(int32_t row, TestResult result) {
  * ================================================================== */
 
 static TestResult wait_user_judgment() {
+    LOG_D("waiting for user judgment: A=Pass, B=Fail");
     for (;;) {
         auto btn = button_wait_any(0);
         if (btn == 0) {
@@ -174,22 +161,66 @@ static TestResult wait_user_judgment() {
  * ================================================================== */
 
 static TestResult test_led() {
-    fill_frame();
-    osal::task::sleep_for(1000);
+    led_set_frame(LED_SYM_FULL);
+    osal::task::sleep_for(500);
 
-    clear_frame();
+    led_clear();
     osal::task::sleep_for(500);
 
     for (int32_t r = 0; r < LED_ROWS; ++r) {
         clear_frame();
         s_frameBuf[r] = 0x1F;
         led_set_frame(s_frameBuf);
-        osal::task::sleep_for(300);
+        osal::task::sleep_for(50);
     }
-
-    const uint8_t checker[5] = {0x15, 0x0A, 0x15, 0x0A, 0x15};
-    led_set_frame(checker);
-    osal::task::sleep_for(1000);
+    for (int32_t r = 0; r < LED_ROWS; ++r) {
+        clear_frame();
+        s_frameBuf[LED_ROWS - 1 - r] = 0x1F;
+        led_set_frame(s_frameBuf);
+        osal::task::sleep_for(50);
+    }
+    for (int32_t c = 0; c < LED_COLS; ++c) {
+        clear_frame();
+        for (int32_t r = 0; r < LED_ROWS; ++r) {
+            s_frameBuf[r] = static_cast<uint8_t>(1U << c);
+        }
+        led_set_frame(s_frameBuf);
+        osal::task::sleep_for(50);
+    }
+    for (int32_t c = 0; c < LED_COLS; ++c) {
+        clear_frame();
+        for (int32_t r = 0; r < LED_ROWS; ++r) {
+            s_frameBuf[r] |= static_cast<uint8_t>(1U << (LED_COLS - 1 - c));
+        }
+        led_set_frame(s_frameBuf);
+        osal::task::sleep_for(50);
+    }
+    clear_frame();
+    for (int32_t r = 0; r < LED_ROWS; ++r) {
+        for (int32_t c = 0; c < LED_COLS; ++c) {
+            led_set(r, c, true);
+            osal::task::sleep_for(10);
+        }
+    }
+    for (int32_t r = 0; r < LED_ROWS; ++r) {
+        for (int32_t c = 0; c < LED_COLS; ++c) {
+            led_set(r, c, false);
+            osal::task::sleep_for(10);
+        }
+    }
+    for (int32_t r = 0; r < 10; ++r) {
+        {
+            const uint8_t checker[5] = {0x15, 0x0A, 0x15, 0x0A, 0x15};
+            led_set_frame(checker);
+        }
+        osal::task::sleep_for(100);
+        {
+            const uint8_t checker[5] = {0x0A, 0x15, 0x0A, 0x15, 0x0A};
+            led_set_frame(checker);
+        }
+        osal::task::sleep_for(100);
+    }
+    clear_frame();
 
     return wait_user_judgment();
 }
@@ -363,9 +394,6 @@ static int app_main() {
 
     for (int32_t i = 0; i < NUM_TESTS; ++i) {
         LOG_D("test[%ld] %s begin", i, s_tests[i].m_name);
-        show_test_number(i + 1);
-        osal::task::sleep_for(500);
-
         results[i] = s_tests[i].m_func();
 
         if (results[i] != TestResult::Pass) {

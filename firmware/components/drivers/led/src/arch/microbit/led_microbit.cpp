@@ -38,7 +38,7 @@ static const uint32_t s_colPins[LED_COLS] = {
  * State
  * ================================================================== */
 
-static uint8_t s_framebuf[LED_ROWS] = {0};
+static volatile uint8_t s_framebuf[LED_ROWS] = {0};
 static uint8_t s_currentRow = 0;
 
 /* ==================================================================
@@ -66,13 +66,17 @@ void led_scan_tick(void) {
  * ================================================================== */
 
 void led_init(void) {
+    led_clear();
+    for (int32_t i = 0; i < LED_ROWS; i++) {
+        led_scan_tick();
+    }
     LOG_D("init: configuring GPIO");
     for (int32_t i = 0; i < LED_ROWS; i++) {
         nrf_gpio_cfg(s_rowPins[i],
                      NRF_GPIO_PIN_DIR_OUTPUT,
                      NRF_GPIO_PIN_INPUT_DISCONNECT,
                      NRF_GPIO_PIN_NOPULL,
-                     NRF_GPIO_PIN_H0H1,
+                     NRF_GPIO_PIN_S0H1,
                      NRF_GPIO_PIN_NOSENSE);
         nrf_gpio_pin_clear(s_rowPins[i]);
     }
@@ -81,7 +85,7 @@ void led_init(void) {
                      NRF_GPIO_PIN_DIR_OUTPUT,
                      NRF_GPIO_PIN_INPUT_DISCONNECT,
                      NRF_GPIO_PIN_NOPULL,
-                     NRF_GPIO_PIN_H0H1,
+                     NRF_GPIO_PIN_S0H1,
                      NRF_GPIO_PIN_NOSENSE);
         nrf_gpio_pin_set(s_colPins[i]);
     }
