@@ -2,7 +2,7 @@
  * @file led_microbit.cpp
  * @brief micro:bit v2.2 LED 5x5 マトリクス GPIO 多重化実装
  *
- * TIMER1 ハードウェアタイマ割り込みで自動スキャンする。
+ * TIMER2 ハードウェアタイマ割り込みで自動スキャンする。
  * apps/ 層からタイマーを供給する必要はない。
  */
 
@@ -45,7 +45,7 @@ static uint8_t s_currentRow = 0;
  * Timer
  * ================================================================== */
 
-static nrfx_timer_t s_timer = NRFX_TIMER_INSTANCE(2);
+static nrfx_timer_t s_timer = NRFX_TIMER_INSTANCE(NRF_TIMER2);
 
 static constexpr uint32_t SCAN_INTERVAL_US = 2000;  // 2ms per row → 10ms/frame = 100Hz
 
@@ -103,7 +103,11 @@ void led_init(void) {
 
     nrfx_timer_config_t config = NRFX_TIMER_DEFAULT_CONFIG(1000000);  // 1 MHz
     config.bit_width = NRF_TIMER_BIT_WIDTH_32;
-    nrfx_timer_init(&s_timer, &config, scan_tick_handler);
+    int err = nrfx_timer_init(&s_timer, &config, scan_tick_handler);
+    if (err != 0) {
+        LOG_E("TIMER2 init failed: %d", err);
+        return;
+    }
 
     nrfx_timer_extended_compare(&s_timer,
                                 NRF_TIMER_CC_CHANNEL0,
@@ -111,7 +115,7 @@ void led_init(void) {
                                 NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK,
                                 true);
     nrfx_timer_enable(&s_timer);
-    LOG_D("init: TIMER1 started (%u us/row)", SCAN_INTERVAL_US);
+    LOG_D("init: TIMER2 started (%u us/row)", SCAN_INTERVAL_US);
 }
 
 void led_set(uint8_t row, uint8_t col, bool on) {
