@@ -10,6 +10,8 @@
 #include <cstring>
 #include <cstdlib>
 
+namespace beacon {
+
 /* ================================================================== */
 /*  Constants                                                         */
 /* ================================================================== */
@@ -31,22 +33,13 @@ static constexpr uint16_t MS_TO_BLE_UNITS(uint16_t ms) {
 /*  State                                                             */
 /* ================================================================== */
 
-static BeaconConfig s_config = {};
+static Config s_config = {};
 static int32_t s_initialized = 0;
 
 /* ================================================================== */
 /*  AD Data builder                                                   */
 /* ================================================================== */
 
-/**
- * ビーコン用 AD データを構築する
- *
- * 構造:
- *   [Flags: 3B] [Manufacturer Specific Data: variable]
- *
- * Manufacturer Specific Data:
- *   AD Length | AD Type (0xFF) | Company ID (2B) | TX Power (1B) | ...
- */
 static uint8_t s_adData[BLE_ADVERTISE_DATA_MAX_LENGTH];
 static uint8_t s_adDataLength = 0;
 
@@ -54,24 +47,23 @@ static void build_ad_data(void) {
     uint8_t pos = 0;
 
     /* --- Flags --- */
-    s_adData[pos++] = 0x02; /* AD Length */
-    s_adData[pos++] = 0x01; /* AD Type: Flags */
-    s_adData[pos++] = 0x06; /* LE General Discoverable + BR/EDR Not Supported */
+    s_adData[pos++] = 0x02;
+    s_adData[pos++] = 0x01;
+    s_adData[pos++] = 0x06;
 
     /* --- Manufacturer Specific Data --- */
     uint8_t mfr_start = pos;
-    pos++;                  /* AD Length (後で埋める) */
-    s_adData[pos++] = 0xFF; /* AD Type: Manufacturer Specific Data */
+    pos++;
+    s_adData[pos++] = 0xFF;
     s_adData[pos++] = s_config.company_id_lo;
     s_adData[pos++] = s_config.company_id_hi;
     s_adData[pos++] = static_cast<uint8_t>(s_config.tx_power);
 
-    /* AD Length を設定 (Type + Data のバイト数) */
     s_adData[mfr_start] = static_cast<uint8_t>(pos - mfr_start - 1);
 
     /* --- TX Power Level --- */
-    s_adData[pos++] = 0x02; /* AD Length */
-    s_adData[pos++] = 0x0A; /* AD Type: TX Power Level */
+    s_adData[pos++] = 0x02;
+    s_adData[pos++] = 0x0A;
     s_adData[pos++] = static_cast<uint8_t>(s_config.tx_power);
 
     s_adDataLength = pos;
@@ -92,7 +84,7 @@ static int32_t start_advertising(void) {
     BLEGapAdvertiseParams params = {};
     params.interval_min = MS_TO_BLE_UNITS(s_config.interval_ms);
     params.interval_max = MS_TO_BLE_UNITS(s_config.interval_ms);
-    params.advertise_type = 2; /* ADV_NONCONN_IND (ビーコン用) */
+    params.advertise_type = 2;
 
     return ble_gap_advertise_start(static_cast<uint8_t>(BLEAddressType::Random), &params);
 }
@@ -108,21 +100,21 @@ static void cmd_beacon(int32_t argc, const char *const *argv) {
     }
 
     if (std::strcmp(argv[1], "start") == 0) {
-        if (beacon_is_active()) {
+        if (is_active()) {
             shell_puts("Already active\r\n");
             return;
         }
-        auto result = beacon_start();
+        auto result = start();
         if (result == 0) {
             shell_puts("OK\r\n");
         } else {
             shell_printf("Error: %ld\r\n", static_cast<long>(result));
         }
     } else if (std::strcmp(argv[1], "stop") == 0) {
-        beacon_stop();
+        stop();
         shell_puts("OK\r\n");
     } else if (std::strcmp(argv[1], "status") == 0) {
-        if (beacon_is_active()) {
+        if (is_active()) {
             shell_printf("Beacon: active (interval=%u ms)\r\n", static_cast<unsigned>(s_config.interval_ms));
         } else {
             shell_puts("Beacon: stopped\r\n");
@@ -133,7 +125,7 @@ static void cmd_beacon(int32_t argc, const char *const *argv) {
             return;
         }
         auto val = static_cast<uint16_t>(std::strtoul(argv[2], nullptr, 10));
-        auto result = beacon_set_interval(val);
+        auto result = set_interval(val);
         if (result == 0) {
             shell_printf("OK: interval=%u ms\r\n", static_cast<unsigned>(val));
         } else {
@@ -154,7 +146,7 @@ static constexpr uint8_t BEACON_CMD_COUNT = static_cast<uint8_t>(sizeof(BEACON_C
 /*  Public API                                                        */
 /* ================================================================== */
 
-int32_t beacon_init(const BeaconConfig *config) {
+int32_t init(const Config *config) {
     if (config != nullptr) {
         s_config = *config;
     } else {
@@ -168,25 +160,25 @@ int32_t beacon_init(const BeaconConfig *config) {
     return ble_init();
 }
 
-int32_t beacon_start(void) {
+int32_t start(void) {
     if (!s_initialized) {
         return -1;
     }
-    if (beacon_is_active()) {
+    if (is_active()) {
         return static_cast<int32_t>(BLEError::Busy);
     }
     return start_advertising();
 }
 
-int32_t beacon_stop(void) {
+int32_t stop(void) {
     return ble_gap_advertise_stop();
 }
 
-int32_t beacon_is_active(void) {
+int32_t is_active(void) {
     return ble_gap_advertise_active();
 }
 
-int32_t beacon_set_interval(uint16_t interval_ms) {
+int32_t set_interval(uint16_t interval_ms) {
     if (interval_ms < INTERVAL_MIN_MS || interval_ms > INTERVAL_MAX_MS) {
         return -1;
     }
@@ -194,7 +186,7 @@ int32_t beacon_set_interval(uint16_t interval_ms) {
     s_config.interval_ms = interval_ms;
 
     /* 発信中なら再起動 */
-    if (beacon_is_active()) {
+    if (is_active()) {
         ble_gap_advertise_stop();
         return start_advertising();
     }
@@ -202,13 +194,15 @@ int32_t beacon_set_interval(uint16_t interval_ms) {
     return 0;
 }
 
-uint16_t beacon_get_interval(void) {
+uint16_t get_interval(void) {
     return s_config.interval_ms;
 }
 
-const ShellCommand *beacon_get_shell_commands(uint8_t *count) {
+const ShellCommand *get_shell_commands(uint8_t *count) {
     if (count != nullptr) {
         *count = BEACON_CMD_COUNT;
     }
     return BEACON_CMDS;
 }
+
+}  // namespace beacon

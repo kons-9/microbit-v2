@@ -8,7 +8,7 @@ target_include_directories(crash
 
 if(TARGET_ARCH STREQUAL "microbit")
     target_sources(crash PRIVATE
-        src/arch/microbit/crash_handler.c
+        src/arch/microbit/crash_handler.cpp
     )
     target_link_libraries(crash
         PUBLIC  sysconfig
@@ -17,9 +17,9 @@ if(TARGET_ARCH STREQUAL "microbit")
 
     if(NOT "UPDATER_MODE" IN_LIST ARCH_DEFINITIONS)
         # main app のみ: Reset_Handler をラップしてブートモード判定を挿入
-        # boot_check.c は INTERFACE ソースとして実行ファイルに直接コンパイルされる
+        # boot_check.cpp は INTERFACE ソースとして実行ファイルに直接コンパイルされる
         target_sources(crash INTERFACE
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/microbit/boot_check.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/arch/microbit/boot_check.cpp
         )
         target_link_options(crash INTERFACE -Wl,--wrap=Reset_Handler)
     endif()

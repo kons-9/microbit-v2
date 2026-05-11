@@ -12,30 +12,25 @@
  *   +0x004: CrashInfo            — クラッシュ情報 (存在する場合)
  */
 
-#include <stdint.h>
+#include <cstdint>
 
 #include <sysconfig.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* ==================================================================
  * 定数
  * ================================================================== */
 
 /** クラッシュ情報の有効性を示すマジックナンバー ("CRAS") */
-#define CRASH_INFO_MAGIC 0x43524153U
+constexpr uint32_t CRASH_INFO_MAGIC = 0x43524153U;
 
 /** スタックダンプのワード数 */
-#define CRASH_STACK_DUMP_WORDS 16
+constexpr uint32_t CRASH_STACK_DUMP_WORDS = 16;
 
 /* ==================================================================
  * 型定義
  * ================================================================== */
 
 /** フォルト種別 */
-#ifdef __cplusplus
 enum class CrashFaultType : uint32_t {
     Hard = 1,
     Mem = 2,
@@ -43,18 +38,9 @@ enum class CrashFaultType : uint32_t {
     Usage = 4,
     NMI = 5,
 };
-#else
-typedef enum {
-    CRASH_FAULT_HARD = 1,
-    CRASH_FAULT_MEM = 2,
-    CRASH_FAULT_BUS = 3,
-    CRASH_FAULT_USAGE = 4,
-    CRASH_FAULT_NMI = 5,
-} CrashFaultType;
-#endif
 
 /** クラッシュ情報構造体 */
-typedef struct {
+struct CrashInfo {
     uint32_t magic;      /**< CRASH_INFO_MAGIC if valid */
     uint32_t fault_type; /**< CrashFaultType */
 
@@ -80,7 +66,7 @@ typedef struct {
 
     /* Stack dump (フォルト時のスタック上位Nワード) */
     uint32_t stack_dump[CRASH_STACK_DUMP_WORDS];
-} CrashInfo;
+};
 
 /**
  * フォルトハンドラの型
@@ -92,7 +78,7 @@ typedef struct {
  * @param frame       exception frame ポインタ
  * @param exc_return  EXC_RETURN 値 (LR at exception entry)
  */
-typedef void (*CrashHandlerCallback)(uint32_t type, uint32_t *frame, uint32_t exc_return);
+using CrashHandlerCallback = void (*)(uint32_t type, uint32_t *frame, uint32_t exc_return);
 
 /* ==================================================================
  * API
@@ -104,7 +90,7 @@ typedef void (*CrashHandlerCallback)(uint32_t type, uint32_t *frame, uint32_t ex
  * 設定しない場合はデフォルトハンドラが使われる
  * (クラッシュ情報を Settings page に保存し updater モードで再起動)。
  *
- * @param callback  ハンドラ関数 (NULL でデフォルトに戻す)
+ * @param callback  ハンドラ関数 (nullptr でデフォルトに戻す)
  */
 void crash_set_handler(CrashHandlerCallback callback);
 
@@ -120,7 +106,3 @@ int32_t crash_info_read(CrashInfo *info);
  * Settings page のクラッシュ情報をクリアする (ブートモードは保持)
  */
 void crash_info_clear(void);
-
-#ifdef __cplusplus
-}
-#endif

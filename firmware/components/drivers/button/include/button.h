@@ -9,28 +9,12 @@
  *   Button B: P0.23 (active low, 外部 4.7K プルアップ)
  */
 
-#include <stdint.h>
-#include <stdbool.h>
-
-#ifdef __cplusplus
+#include <cstdint>
 
 enum class ButtonId : uint8_t {
     A = 0,
     B = 1,
 };
-
-#else
-
-typedef enum {
-    BUTTON_ID_A = 0,
-    BUTTON_ID_B = 1,
-} ButtonId;
-
-#endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** ボタンを初期化する */
 void button_init(void);
@@ -55,7 +39,3 @@ bool button_wait_press(uint8_t id, uint32_t timeout_ms);
  * @return 押されたボタン ID
  */
 uint8_t button_wait_any(uint32_t timeout_ms);
-
-#ifdef __cplusplus
-}
-#endif

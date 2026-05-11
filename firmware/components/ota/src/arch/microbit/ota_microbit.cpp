@@ -1,8 +1,7 @@
 /**
- * @file ota_microbit.c
+ * @file ota_microbit.cpp
  * @brief micro:bit v2 (nRF52833) OTA Flash 操作
  *
- * NOTE: 低レベル Flash 操作のため C で記述する。
  * メモリレイアウトは sysconfig 経由で参照する。
  */
 
@@ -18,11 +17,11 @@ void ota_arch_flash_erase(uint32_t offset, uint32_t size) {
     uint32_t end = address + size;
 
     /* ページ境界にアライン */
-    address &= ~(SYSCONFIG_FLASH_PAGE_SIZE - 1);
+    address &= ~(sysconfig::FLASH_PAGE_SIZE - 1);
 
     while (address < end) {
         nrfx_nvmc_page_erase(address);
-        address += SYSCONFIG_FLASH_PAGE_SIZE;
+        address += sysconfig::FLASH_PAGE_SIZE;
     }
 }
 
@@ -60,6 +59,6 @@ uint32_t ota_arch_get_app_slot_size(void) {
 void ota_arch_reboot(sysconfig_boot_mode_t mode) {
     uint32_t address = sysconfig_get_settings_address();
     nrfx_nvmc_page_erase(address);
-    nrfx_nvmc_word_write(address, (uint32_t)mode);
+    nrfx_nvmc_word_write(address, static_cast<uint32_t>(mode));
     NVIC_SystemReset();
 }

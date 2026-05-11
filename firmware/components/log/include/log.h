@@ -21,23 +21,19 @@
  * 幅指定: %04x, %8d 等のゼロ埋め・右寄せに対応。
  */
 
-#include <stdint.h>
-#include <stddef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
+#include <cstddef>
 
 /* ------------------------------------------------------------------ */
 /* ログレベル定義                                                      */
 /* ------------------------------------------------------------------ */
 
-typedef enum {
+enum LogLevel {
     LOG_LEVEL_ERROR = 0, /**< 致命的エラー */
     LOG_LEVEL_WARN = 1,  /**< 警告 */
     LOG_LEVEL_INFO = 2,  /**< 情報 */
     LOG_LEVEL_DEBUG = 3, /**< デバッグ */
-} LogLevel;
+};
 
 /* ------------------------------------------------------------------ */
 /* 初期化・設定                                                        */
@@ -47,7 +43,7 @@ typedef enum {
  * @brief ログモジュールを初期化する
  * @param max_level このレベル以下のログのみ出力する
  *
- * 内部で UARTInit を呼ぶ。UART未初期化の状態で呼んでよい。
+ * 内部で uart_init を呼ぶ。UART未初期化の状態で呼んでよい。
  */
 void LogInit(LogLevel max_level);
 
@@ -92,7 +88,3 @@ void LogHexDump(LogLevel level, const char *tag, const void *data, size_t len);
 #define LOG_W(fmt, ...) LogOutput(LOG_LEVEL_WARN, LOG_TAG, fmt, ##__VA_ARGS__)
 #define LOG_I(fmt, ...) LogOutput(LOG_LEVEL_INFO, LOG_TAG, fmt, ##__VA_ARGS__)
 #define LOG_D(fmt, ...) LogOutput(LOG_LEVEL_DEBUG, LOG_TAG, fmt, ##__VA_ARGS__)
-
-#ifdef __cplusplus
-}
-#endif

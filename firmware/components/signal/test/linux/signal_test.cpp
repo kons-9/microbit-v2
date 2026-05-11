@@ -5,73 +5,67 @@
 using Catch::Matchers::WithinAbs;
 
 TEST_CASE("EMA basic smoothing", "[signal][ema]") {
-    SignalEma ema;
-    signal_ema_init(&ema, 0.3f);
+    signal::Ema ema(0.3f);
 
-    float v = signal_ema_update(&ema, -60.0f);
+    float v = ema.update(-60.0f);
     REQUIRE_THAT(v, WithinAbs(-60.0f, 0.01f));
 
-    v = signal_ema_update(&ema, -50.0f);
+    v = ema.update(-50.0f);
     // expected: 0.3*(-50) + 0.7*(-60) = -57
     REQUIRE_THAT(v, WithinAbs(-57.0f, 0.01f));
 }
 
 TEST_CASE("EMA alpha=1 means no smoothing", "[signal][ema]") {
-    SignalEma ema;
-    signal_ema_init(&ema, 1.0f);
+    signal::Ema ema(1.0f);
 
-    signal_ema_update(&ema, -70.0f);
-    float v = signal_ema_update(&ema, -40.0f);
+    ema.update(-70.0f);
+    float v = ema.update(-40.0f);
     REQUIRE_THAT(v, WithinAbs(-40.0f, 0.01f));
 }
 
 TEST_CASE("EMA reset restores initial state", "[signal][ema]") {
-    SignalEma ema;
-    signal_ema_init(&ema, 0.5f);
+    signal::Ema ema(0.5f);
 
-    signal_ema_update(&ema, -60.0f);
-    signal_ema_update(&ema, -50.0f);
-    signal_ema_reset(&ema);
+    ema.update(-60.0f);
+    ema.update(-50.0f);
+    ema.reset();
 
-    float v = signal_ema_update(&ema, -80.0f);
+    float v = ema.update(-80.0f);
     REQUIRE_THAT(v, WithinAbs(-80.0f, 0.01f));
 }
 
 TEST_CASE("RssiAccum basic averaging", "[signal][rssi]") {
-    SignalRssiAccum accum;
-    signal_rssi_accum_init(&accum, 3);
+    signal::RssiAccum accum(3);
 
-    REQUIRE(signal_rssi_accum_add(&accum, -60) == 0);
-    REQUIRE(signal_rssi_accum_add(&accum, -50) == 0);
-    REQUIRE(signal_rssi_accum_add(&accum, -70) == 1);
+    REQUIRE(accum.add(-60) == false);
+    REQUIRE(accum.add(-50) == false);
+    REQUIRE(accum.add(-70) == true);
 
-    int8_t avg = signal_rssi_accum_average(&accum);
+    int8_t avg = accum.average();
     REQUIRE(avg == -60);
 }
 
 TEST_CASE("RssiAccum reset", "[signal][rssi]") {
-    SignalRssiAccum accum;
-    signal_rssi_accum_init(&accum, 2);
+    signal::RssiAccum accum(2);
 
-    signal_rssi_accum_add(&accum, -40);
-    signal_rssi_accum_add(&accum, -80);
-    signal_rssi_accum_reset(&accum);
+    accum.add(-40);
+    accum.add(-80);
+    accum.reset();
 
-    REQUIRE(signal_rssi_accum_add(&accum, -55) == 0);
-    REQUIRE(signal_rssi_accum_add(&accum, -65) == 1);
+    REQUIRE(accum.add(-55) == false);
+    REQUIRE(accum.add(-65) == true);
 
-    int8_t avg = signal_rssi_accum_average(&accum);
+    int8_t avg = accum.average();
     REQUIRE(avg == -60);
 }
 
 TEST_CASE("RssiAccum overflow clamped", "[signal][rssi]") {
-    SignalRssiAccum accum;
-    signal_rssi_accum_init(&accum, 100);
+    signal::RssiAccum accum(100);
 
-    for (int32_t i = 0; i < SIGNAL_RSSI_MAX_SAMPLES; ++i) {
-        signal_rssi_accum_add(&accum, -50);
+    for (int32_t i = 0; i < signal::RSSI_MAX_SAMPLES; ++i) {
+        accum.add(-50);
     }
 
-    int8_t avg = signal_rssi_accum_average(&accum);
+    int8_t avg = accum.average();
     REQUIRE(avg == -50);
 }

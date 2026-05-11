@@ -9,12 +9,7 @@
  * 自己共振周波数: 2700Hz
  */
 
-#include <stdint.h>
-#include <stdbool.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
 
 /** スピーカーを初期化する */
 void speaker_init(void);
@@ -30,7 +25,3 @@ void speaker_stop(void);
 
 /** スピーカーが再生中か確認する */
 bool speaker_is_playing(void);
-
-#ifdef __cplusplus
-}
-#endif

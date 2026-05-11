@@ -19,8 +19,9 @@ endif()
 
 if(TARGET_ARCH STREQUAL "microbit")
     target_sources(ble PRIVATE
-        src/arch/microbit/ble_microbit.c
+        src/arch/microbit/ble_microbit.cpp
     )
+    target_link_libraries(ble PRIVATE nrfx)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")
 endif()

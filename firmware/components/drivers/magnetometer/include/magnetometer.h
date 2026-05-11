@@ -13,19 +13,14 @@
  * 分解能: 16bit (1.5 mgauss/LSB)
  */
 
-#include <stdint.h>
-#include <stdbool.h>
+#include <cstdint>
 
 /** 磁場データ (mGauss 単位) */
-typedef struct {
+struct MagnetometerData {
     int16_t m_x;
     int16_t m_y;
     int16_t m_z;
-} MagnetometerData;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+};
 
 /**
  * 地磁気センサを初期化する
@@ -50,7 +45,3 @@ uint8_t magnetometer_who_am_i(void);
  * @return 方位角 (度, 0-359, 北=0)
  */
 uint16_t magnetometer_heading(void);
-
-#ifdef __cplusplus
-}
-#endif

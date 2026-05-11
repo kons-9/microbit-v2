@@ -7,14 +7,10 @@
  * 各ターゲットが Flash 操作とリブートを実装する。
  */
 
-#include <stdint.h>
-#include <stddef.h>
+#include <cstdint>
+#include <cstddef>
 
 #include <sysconfig.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * アプリスロットの指定オフセットを消去する
@@ -57,7 +53,3 @@ uint32_t ota_arch_get_app_slot_size(void);
  * @param mode  ブートモード
  */
 void ota_arch_reboot(sysconfig_boot_mode_t mode);
-
-#ifdef __cplusplus
-}
-#endif

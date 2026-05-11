@@ -9,12 +9,7 @@
  *   方式: 静電容量式 (10Mohm プルアップによる RC 時定数検出)
  */
 
-#include <stdint.h>
-#include <stdbool.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
 
 /** タッチロゴを初期化する */
 void touch_init(void);
@@ -28,7 +23,3 @@ bool touch_is_touched(void);
  * @return true: タッチされた, false: タイムアウト
  */
 bool touch_wait(uint32_t timeout_ms);
-
-#ifdef __cplusplus
-}
-#endif

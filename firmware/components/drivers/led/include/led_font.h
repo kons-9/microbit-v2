@@ -8,11 +8,7 @@
  * bitmap[row] の bit0-4 が col0-4 に対応。
  */
 
-#include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
 
 /* ==================================================================
  * 数字 0-9
@@ -113,7 +109,3 @@ static inline const uint8_t *led_font_get(char c) {
     }
     return nullptr;
 }
-
-#ifdef __cplusplus
-}
-#endif

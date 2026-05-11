@@ -11,26 +11,22 @@
  * 外部コマンドはテーブル登録で追加可能。
  */
 
-#include <stdint.h>
-#include <stddef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
+#include <cstddef>
 
 /* ================================================================== */
 /*  Types                                                             */
 /* ================================================================== */
 
 /** コマンドハンドラ関数型 */
-typedef void (*ShellCmdHandler)(int32_t argc, const char *const *argv);
+using ShellCmdHandler = void (*)(int32_t argc, const char *const *argv);
 
 /** コマンドエントリ */
-typedef struct {
+struct ShellCommand {
     const char *name;        /**< コマンド名 */
     const char *help;        /**< ヘルプ文字列 (1行) */
     ShellCmdHandler handler; /**< 実行関数 */
-} ShellCommand;
+};
 
 /* ================================================================== */
 /*  API                                                               */
@@ -70,7 +66,3 @@ void shell_puts(const char *str);
  * @brief シェルにフォーマット出力する
  */
 void shell_printf(const char *fmt, ...);
-
-#ifdef __cplusplus
-}
-#endif

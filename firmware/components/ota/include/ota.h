@@ -10,40 +10,26 @@
  * @pre ota_start_receive() を呼ぶ前に ble_init() が完了していること
  */
 
-#include <stdint.h>
-#include <stddef.h>
+#include <cstdint>
+#include <cstddef>
 
 #include <sysconfig.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* ==================================================================
  * Error Codes
  * ================================================================== */
 
-#ifdef __cplusplus
 enum class OTAError : int32_t {
     Ok = 0,
     State = -1,    /**< 不正な状態遷移 */
     Checksum = -2, /**< チェックサム不一致 */
     Size = -3,     /**< イメージサイズ超過 */
 };
-#else
-typedef enum {
-    OTA_ERROR_OK = 0,
-    OTA_ERROR_STATE = -1,
-    OTA_ERROR_CHECKSUM = -2,
-    OTA_ERROR_SIZE = -3,
-} OTAError;
-#endif
 
 /* ==================================================================
  * OTA State
  * ================================================================== */
 
-#ifdef __cplusplus
 enum class OTAState : uint8_t {
     Idle = 0,      /**< 待機中 */
     Receiving = 1, /**< イメージ受信中 */
@@ -51,29 +37,20 @@ enum class OTAState : uint8_t {
     Complete = 3,  /**< 完了 */
     Error = 4,     /**< エラー */
 };
-#else
-typedef enum {
-    OTA_STATE_IDLE = 0,
-    OTA_STATE_RECEIVING = 1,
-    OTA_STATE_VERIFYING = 2,
-    OTA_STATE_COMPLETE = 3,
-    OTA_STATE_ERROR = 4,
-} OTAState;
-#endif
 
 /* ==================================================================
  * OTA Image Header
  * ================================================================== */
 
 /** OTA イメージマジックナンバー ("OTA1") */
-#define OTA_IMAGE_MAGIC 0x4F544131U
+constexpr uint32_t OTA_IMAGE_MAGIC = 0x4F544131U;
 
-typedef struct {
+struct OTAImageHeader {
     uint32_t magic;      /**< マジックナンバー (OTA_IMAGE_MAGIC) */
     uint32_t image_size; /**< イメージ本体サイズ (bytes) */
     uint32_t version;    /**< ファームウェアバージョン */
     uint32_t crc32;      /**< イメージ本体の CRC32 */
-} OTAImageHeader;
+};
 
 /* ==================================================================
  * OTA Progress Callback
@@ -84,7 +61,7 @@ typedef struct {
  * @param received_bytes  受信済みバイト数
  * @param total_bytes     イメージ全体のバイト数
  */
-typedef void (*OTAProgressCallback)(uint32_t received_bytes, uint32_t total_bytes);
+using OTAProgressCallback = void (*)(uint32_t received_bytes, uint32_t total_bytes);
 
 /* ==================================================================
  * API
@@ -149,7 +126,3 @@ int32_t ota_on_header_received(const OTAImageHeader *header);
  * @return 0 on success
  */
 int32_t ota_on_data_received(const uint8_t *data, uint32_t length);
-
-#ifdef __cplusplus
-}
-#endif

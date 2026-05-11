@@ -14,10 +14,7 @@
  * 分解能: 12bit (high-resolution mode)
  */
 
-#include <stdint.h>
-#include <stdbool.h>
-
-#ifdef __cplusplus
+#include <cstdint>
 
 /** 加速度レンジ設定 */
 enum class AccelerometerRange : uint8_t {
@@ -27,27 +24,12 @@ enum class AccelerometerRange : uint8_t {
     G16 = 3,
 };
 
-#else
-
-typedef enum {
-    ACCELEROMETER_RANGE_2G = 0,
-    ACCELEROMETER_RANGE_4G = 1,
-    ACCELEROMETER_RANGE_8G = 2,
-    ACCELEROMETER_RANGE_16G = 3,
-} AccelerometerRange;
-
-#endif
-
 /** 加速度データ (mg 単位) */
-typedef struct {
+struct AccelerometerData {
     int16_t m_x;
     int16_t m_y;
     int16_t m_z;
-} AccelerometerData;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+};
 
 /**
  * 加速度センサを初期化する
@@ -72,7 +54,3 @@ AccelerometerData accelerometer_read(void);
  * @return WHO_AM_I 値 (期待値: 0x33)
  */
 uint8_t accelerometer_who_am_i(void);
-
-#ifdef __cplusplus
-}
-#endif

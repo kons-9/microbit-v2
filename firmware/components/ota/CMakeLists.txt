@@ -17,7 +17,7 @@ target_link_libraries(ota
 )
 
 if(TARGET_ARCH STREQUAL "microbit")
-    target_sources(ota PRIVATE src/arch/microbit/ota_microbit.c)
+    target_sources(ota PRIVATE src/arch/microbit/ota_microbit.cpp)
     target_link_libraries(ota PRIVATE nrfx)
 else()
     message(FATAL_ERROR "Unknown TARGET_ARCH: ${TARGET_ARCH}")

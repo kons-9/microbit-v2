@@ -1,11 +1,9 @@
 /**
- * @file ble_microbit.c
+ * @file ble_microbit.cpp
  * @brief BLE Observer/Broadcaster — nRF52833 RADIO 直叩き実装
  *
  * BLE の Advertising パケットの受信 (Observer) と送信 (Broadcaster) を
  * nRF52833 の RADIO ペリフェラルを直接操作して実現する。
- *
- * NOTE: このファイルは低レベルレジスタ操作と割り込みハンドラを含むため C で記述する。
  *
  * === スキャン (Receiver) ===
  * - RADIO を BLE_1MBIT モードで設定し、ADV チャネル (37/38/39) を巡回受信
@@ -25,7 +23,7 @@
 #include "../ble_arch.h"
 #include "nrf.h"
 
-#include <string.h>
+#include <cstring>
 
 /* ==================================================================
  * 定数
@@ -209,7 +207,7 @@ int32_t ble_arch_advertise_stop(void) {
  *   5. 次の ADV チャネルに切り替えて受信再開
  * ================================================================== */
 
-void RADIO_IRQHandler(void) {
+extern "C" void RADIO_IRQHandler(void) {
     if (NRF_RADIO->EVENTS_END == 0) {
         return;
     }
@@ -291,7 +289,7 @@ next_channel:
  * 推奨されているが、簡易実装のため省略している。
  * ================================================================== */
 
-void TIMER1_IRQHandler(void) {
+extern "C" void TIMER1_IRQHandler(void) {
     if (NRF_TIMER1->EVENTS_COMPARE[0] == 0) {
         return;
     }

@@ -57,42 +57,42 @@ struct BeaconFixture {
 };
 
 /* ================================================================== */
-/*  beacon_init                                                       */
+/*  beacon::init                                                      */
 /* ================================================================== */
 
 TEST_CASE_METHOD(BeaconFixture, "beacon_init with default config succeeds", "[beacon]") {
-    REQUIRE(beacon_init(nullptr) == 0);
-    REQUIRE(beacon_is_active() == 0);
+    REQUIRE(beacon::init(nullptr) == 0);
+    REQUIRE(beacon::is_active() == 0);
 }
 
 TEST_CASE_METHOD(BeaconFixture, "beacon_init with custom config", "[beacon]") {
-    BeaconConfig cfg = {500, -4, 0xFF, 0xFF};
-    REQUIRE(beacon_init(&cfg) == 0);
-    REQUIRE(beacon_get_interval() == 500);
+    beacon::Config cfg = {500, -4, 0xFF, 0xFF};
+    REQUIRE(beacon::init(&cfg) == 0);
+    REQUIRE(beacon::get_interval() == 500);
 }
 
 /* ================================================================== */
-/*  beacon_start / beacon_stop                                        */
+/*  beacon::start / beacon::stop                                      */
 /* ================================================================== */
 
 TEST_CASE_METHOD(BeaconFixture, "beacon_start begins advertising", "[beacon]") {
-    beacon_init(nullptr);
-    REQUIRE(beacon_start() == 0);
-    REQUIRE(beacon_is_active() == 1);
+    beacon::init(nullptr);
+    REQUIRE(beacon::start() == 0);
+    REQUIRE(beacon::is_active() == 1);
     REQUIRE(mock_ble_get_advertising() == 1);
 }
 
 TEST_CASE_METHOD(BeaconFixture, "beacon_stop stops advertising", "[beacon]") {
-    beacon_init(nullptr);
-    beacon_start();
-    REQUIRE(beacon_stop() == 0);
-    REQUIRE(beacon_is_active() == 0);
+    beacon::init(nullptr);
+    beacon::start();
+    REQUIRE(beacon::stop() == 0);
+    REQUIRE(beacon::is_active() == 0);
     REQUIRE(mock_ble_get_advertising() == 0);
 }
 
 TEST_CASE_METHOD(BeaconFixture, "beacon_start sets AD data", "[beacon]") {
-    beacon_init(nullptr);
-    beacon_start();
+    beacon::init(nullptr);
+    beacon::start();
 
     const uint8_t *data = mock_ble_get_adv_data();
     uint8_t len = mock_ble_get_adv_data_length();
@@ -106,33 +106,33 @@ TEST_CASE_METHOD(BeaconFixture, "beacon_start sets AD data", "[beacon]") {
 }
 
 TEST_CASE_METHOD(BeaconFixture, "beacon_start twice returns busy", "[beacon]") {
-    beacon_init(nullptr);
-    beacon_start();
-    REQUIRE(beacon_start() != 0);
+    beacon::init(nullptr);
+    beacon::start();
+    REQUIRE(beacon::start() != 0);
 }
 
 /* ================================================================== */
-/*  beacon_set_interval                                               */
+/*  beacon::set_interval                                              */
 /* ================================================================== */
 
 TEST_CASE_METHOD(BeaconFixture, "beacon_set_interval changes interval", "[beacon]") {
-    beacon_init(nullptr);
-    REQUIRE(beacon_set_interval(500) == 0);
-    REQUIRE(beacon_get_interval() == 500);
+    beacon::init(nullptr);
+    REQUIRE(beacon::set_interval(500) == 0);
+    REQUIRE(beacon::get_interval() == 500);
 }
 
 TEST_CASE_METHOD(BeaconFixture, "beacon_set_interval rejects out of range", "[beacon]") {
-    beacon_init(nullptr);
-    REQUIRE(beacon_set_interval(10) != 0);     // too small
-    REQUIRE(beacon_set_interval(20000) != 0);  // too large
+    beacon::init(nullptr);
+    REQUIRE(beacon::set_interval(10) != 0);     // too small
+    REQUIRE(beacon::set_interval(20000) != 0);  // too large
 }
 
 TEST_CASE_METHOD(BeaconFixture, "beacon_set_interval restarts if active", "[beacon]") {
-    beacon_init(nullptr);
-    beacon_start();
-    REQUIRE(beacon_set_interval(200) == 0);
-    REQUIRE(beacon_is_active() == 1);
-    REQUIRE(beacon_get_interval() == 200);
+    beacon::init(nullptr);
+    beacon::start();
+    REQUIRE(beacon::set_interval(200) == 0);
+    REQUIRE(beacon::is_active() == 1);
+    REQUIRE(beacon::get_interval() == 200);
 }
 
 /* ================================================================== */
@@ -141,28 +141,28 @@ TEST_CASE_METHOD(BeaconFixture, "beacon_set_interval restarts if active", "[beac
 
 TEST_CASE_METHOD(BeaconFixture, "shell: beacon start/stop", "[beacon][shell]") {
     uint8_t count = 0;
-    const ShellCommand *cmds = beacon_get_shell_commands(&count);
+    const ShellCommand *cmds = beacon::get_shell_commands(&count);
     REQUIRE(count > 0);
 
-    beacon_init(nullptr);
+    beacon::init(nullptr);
     shell_init(cmds, count);
     mock_uart_reset();
 
     feed_line("beacon start");
-    REQUIRE(beacon_is_active() == 1);
+    REQUIRE(beacon::is_active() == 1);
     const char *out = mock_uart_get_output();
     REQUIRE(std::strstr(out, "OK") != nullptr);
 
     feed_line("beacon stop");
-    REQUIRE(beacon_is_active() == 0);
+    REQUIRE(beacon::is_active() == 0);
     out = mock_uart_get_output();
     REQUIRE(std::strstr(out, "OK") != nullptr);
 }
 
 TEST_CASE_METHOD(BeaconFixture, "shell: beacon status", "[beacon][shell]") {
     uint8_t count = 0;
-    const ShellCommand *cmds = beacon_get_shell_commands(&count);
-    beacon_init(nullptr);
+    const ShellCommand *cmds = beacon::get_shell_commands(&count);
+    beacon::init(nullptr);
     shell_init(cmds, count);
     mock_uart_reset();
 
@@ -170,7 +170,7 @@ TEST_CASE_METHOD(BeaconFixture, "shell: beacon status", "[beacon][shell]") {
     const char *out = mock_uart_get_output();
     REQUIRE(std::strstr(out, "stopped") != nullptr);
 
-    beacon_start();
+    beacon::start();
     feed_line("beacon status");
     out = mock_uart_get_output();
     REQUIRE(std::strstr(out, "active") != nullptr);
@@ -178,21 +178,21 @@ TEST_CASE_METHOD(BeaconFixture, "shell: beacon status", "[beacon][shell]") {
 
 TEST_CASE_METHOD(BeaconFixture, "shell: beacon interval", "[beacon][shell]") {
     uint8_t count = 0;
-    const ShellCommand *cmds = beacon_get_shell_commands(&count);
-    beacon_init(nullptr);
+    const ShellCommand *cmds = beacon::get_shell_commands(&count);
+    beacon::init(nullptr);
     shell_init(cmds, count);
     mock_uart_reset();
 
     feed_line("beacon interval 500");
     const char *out = mock_uart_get_output();
     REQUIRE(std::strstr(out, "500") != nullptr);
-    REQUIRE(beacon_get_interval() == 500);
+    REQUIRE(beacon::get_interval() == 500);
 }
 
 TEST_CASE_METHOD(BeaconFixture, "shell: help includes beacon", "[beacon][shell]") {
     uint8_t count = 0;
-    const ShellCommand *cmds = beacon_get_shell_commands(&count);
-    beacon_init(nullptr);
+    const ShellCommand *cmds = beacon::get_shell_commands(&count);
+    beacon::init(nullptr);
     shell_init(cmds, count);
     mock_uart_reset();
 

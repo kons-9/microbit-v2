@@ -77,15 +77,15 @@ static int app_main() {
     flash_fs_init();
 
     /* Beacon モジュール初期化 (BLE init 含む) */
-    beacon_init(nullptr);
+    beacon::init(nullptr);
 
     /* Shell 初期化 (beacon コマンド登録) */
     uint8_t cmd_count = 0;
-    const ShellCommand *cmds = beacon_get_shell_commands(&cmd_count);
+    const ShellCommand *cmds = beacon::get_shell_commands(&cmd_count);
     shell_init(cmds, cmd_count);
 
     /* Beacon 自動開始 */
-    beacon_start();
+    beacon::start();
 
     /* Shell タスク生成・起動 */
     auto id = tk_cre_tsk(&s_ctsk_shell);

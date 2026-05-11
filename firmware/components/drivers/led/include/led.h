@@ -11,15 +11,10 @@
  * ROW=HIGH, COL=LOW で点灯
  */
 
-#include <stdint.h>
-#include <stdbool.h>
+#include <cstdint>
 
 constexpr int32_t LED_ROWS = 5;
 constexpr int32_t LED_COLS = 5;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** LED マトリクスを初期化する */
 void led_init(void);
@@ -46,7 +41,3 @@ void led_set_frame(const uint8_t bitmap[LED_ROWS]);
  * @pre 定期タイマから呼び出すこと
  */
 void led_scan_tick(void);
-
-#ifdef __cplusplus
-}
-#endif

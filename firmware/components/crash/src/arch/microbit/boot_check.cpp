@@ -1,5 +1,5 @@
 /**
- * @file boot_check.c
+ * @file boot_check.cpp
  * @brief Reset Handler ラッパー — ブートモード判定
  *
  * Reset_Handler をラップし、Settings page のブートモードフラグを確認する。
@@ -12,10 +12,10 @@
 
 #include <sysconfig.h>
 
-#include <stdint.h>
+#include <cstdint>
 
 /* カーネルの元の Reset_Handler (--wrap により __real_ プレフィックス付き) */
-extern void __real_Reset_Handler(void);
+extern "C" void __real_Reset_Handler(void);
 
 /**
  * ラップされた Reset_Handler
@@ -23,10 +23,10 @@ extern void __real_Reset_Handler(void);
  * @pre  Flash は直接メモリマップされているため読み出しは初期化不要
  * @post ブートモードに応じて updater へジャンプ、または通常起動
  */
-void __wrap_Reset_Handler(void) {
+extern "C" void __wrap_Reset_Handler(void) {
     volatile uint32_t *settings = sysconfig_get_settings_pointer();
 
-    if (*settings == SYSCONFIG_BOOT_UPDATER) {
+    if (*settings == static_cast<uint32_t>(SYSCONFIG_BOOT_UPDATER)) {
         volatile uint32_t *updater_vector_table = sysconfig_get_updater_vector_table();
         uint32_t stack_pointer = updater_vector_table[0];
         uint32_t program_counter = updater_vector_table[1];

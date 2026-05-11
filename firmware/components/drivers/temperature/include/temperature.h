@@ -9,11 +9,7 @@
  * 分解能: 0.25°C
  */
 
-#include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
 
 /** 温度センサを初期化する */
 void temperature_init(void);
@@ -29,7 +25,3 @@ int32_t temperature_read_raw(void);
  * @return 温度 [°C]
  */
 int8_t temperature_read(void);
-
-#ifdef __cplusplus
-}
-#endif

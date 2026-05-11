@@ -11,12 +11,8 @@
  * @pre ble_init() を呼んでからスキャン / アドバタイズを開始すること
  */
 
-#include <stdint.h>
-#include <stddef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
+#include <cstddef>
 
 /* ==================================================================
  * Address
@@ -26,33 +22,23 @@ extern "C" {
 constexpr uint8_t BLE_ADDRESS_LENGTH = 6;
 
 /** BLE アドレスタイプ */
-#ifdef __cplusplus
 enum class BLEAddressType : uint8_t {
     Public = 0x00,
     Random = 0x01,
     PublicId = 0x02,
     RandomId = 0x03,
 };
-#else
-typedef enum {
-    BLE_ADDRESS_TYPE_PUBLIC = 0x00,
-    BLE_ADDRESS_TYPE_RANDOM = 0x01,
-    BLE_ADDRESS_TYPE_PUBLIC_ID = 0x02,
-    BLE_ADDRESS_TYPE_RANDOM_ID = 0x03,
-} BLEAddressType;
-#endif
 
 /** BLE アドレス */
-typedef struct {
+struct BLEAddress {
     uint8_t type;
     uint8_t value[6];
-} BLEAddress;
+};
 
 /* ==================================================================
  * Error Codes
  * ================================================================== */
 
-#ifdef __cplusplus
 enum class BLEError : int32_t {
     Success = 0,
     Unknown = 1,
@@ -60,62 +46,46 @@ enum class BLEError : int32_t {
     Busy = 3,
     Hardware = 4,
 };
-#else
-typedef enum {
-    BLE_ERROR_SUCCESS = 0,
-    BLE_ERROR_UNKNOWN = 1,
-    BLE_ERROR_INVALID_PARAM = 2,
-    BLE_ERROR_BUSY = 3,
-    BLE_ERROR_HARDWARE = 4,
-} BLEError;
-#endif
 
 /* ==================================================================
  * Scan (Discovery) Parameters
  * ================================================================== */
 
 /** NimBLE互換: スキャンパラメータ */
-typedef struct {
+struct ble_gap_discoveryParams {
     uint16_t interval;         /**< スキャン間隔 (単位: 0.625ms) */
     uint16_t window;           /**< スキャンウィンドウ (単位: 0.625ms) */
     uint8_t filter_policy;     /**< 0: accept all, 1: whitelist only */
     uint8_t is_limited;        /**< limited discovery (0 or 1) */
     uint8_t is_passive;        /**< 1=passive, 0=active */
     uint8_t filter_duplicates; /**< 重複フィルタ (0 or 1) */
-} ble_gap_discoveryParams;
+};
 
 /* ==================================================================
  * Discovery Event Descriptor
  * ================================================================== */
 
 /** NimBLE互換: スキャン結果1件 */
-typedef struct {
+struct ble_gap_discoveryDescriptor {
     BLEAddress address;  /**< Advertiser address */
     int8_t rssi;         /**< RSSI (dBm) */
     uint8_t data_length; /**< AD data length */
     const uint8_t *data; /**< AD data pointer (コールバック内のみ有効) */
     int8_t event_type;   /**< ADV_IND=0, ADV_DIRECT=1, ADV_SCAN=2, ADV_NONCONN=3, SCAN_RSP=4 */
-} ble_gap_discoveryDescriptor;
+};
 
 /* ==================================================================
  * GAP Events
  * ================================================================== */
 
 /** GAP イベントタイプ */
-#ifdef __cplusplus
 enum class BLEGapEventType : uint8_t {
     Discovery = 0,         /**< Advertisement received */
     DiscoveryComplete = 1, /**< Discovery finished (duration expired) */
 };
-#else
-typedef enum {
-    BLE_GAP_EVENT_DISCOVERY = 0,
-    BLE_GAP_EVENT_DISCOVERY_COMPLETE = 1,
-} BLEGapEventType;
-#endif
 
 /** GAP イベント */
-typedef struct {
+struct BLEGapEvent {
     uint8_t type; /**< BLEGapEventType */
     union {
         ble_gap_discoveryDescriptor discovery;
@@ -123,7 +93,7 @@ typedef struct {
             int32_t reason; /**< 0=完了, other=エラー */
         } discovery_complete;
     };
-} BLEGapEvent;
+};
 
 /**
  * GAP イベントコールバック型
@@ -131,7 +101,7 @@ typedef struct {
  * @param argument  ユーザー指定の引数
  * @return 0: continue, 非ゼロ: スキャン停止
  */
-typedef int32_t (*BLEGapEventCallback)(BLEGapEvent *event, void *argument);
+using BLEGapEventCallback = int32_t (*)(BLEGapEvent *event, void *argument);
 
 /* ==================================================================
  * Discovery (Scanner / Observer) API
@@ -190,7 +160,7 @@ int32_t ble_gap_discovery_active(void);
 constexpr uint8_t BLE_ADVERTISE_DATA_MAX_LENGTH = 31;
 
 /** Advertising パラメータ */
-typedef struct {
+struct BLEGapAdvertiseParams {
     /**
      * Advertising 間隔 (単位: 0.625ms)
      *
@@ -207,7 +177,7 @@ typedef struct {
      *   6 = ADV_SCAN_IND     (scannable undirected)
      */
     uint8_t advertise_type;
-} BLEGapAdvertiseParams;
+};
 
 /**
  * Advertising データを設定する
@@ -247,7 +217,3 @@ int32_t ble_gap_advertise_stop(void);
  * @return 1=advertising, 0=idle
  */
 int32_t ble_gap_advertise_active(void);
-
-#ifdef __cplusplus
-}
-#endif

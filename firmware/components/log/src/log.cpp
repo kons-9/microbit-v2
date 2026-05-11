@@ -1,13 +1,12 @@
 /**
- * @file log.c
+ * @file log.cpp
  * @brief ログモジュール実装（printf非依存の軽量フォーマッタ）
  */
 
 #include "log.h"
 #include "uart.h"
 
-#include <stdarg.h>
-#include <stdbool.h>
+#include <cstdarg>
 
 /* ------------------------------------------------------------------ */
 /* 内部状態                                                            */
@@ -31,12 +30,12 @@ static const char *const s_level_tags[] = {
 /* ------------------------------------------------------------------ */
 
 static inline void put_char(char c) {
-    UARTWrite((const uint8_t *)&c, 1);
+    uart_write((const uint8_t *)&c, 1);
 }
 
 static inline void put_str(const char *s) {
     if (s == NULL) {
-        UARTWrite((const uint8_t *)"(null)", 6);
+        uart_write((const uint8_t *)"(null)", 6);
         return;
     }
     while (*s) {
@@ -178,7 +177,7 @@ static void log_vformat(const char *fmt, va_list ap) {
 void LogInit(LogLevel max_level) {
     s_max_level = max_level;
     UARTConfig cfg = {0};
-    UARTInit(&cfg);
+    uart_init(&cfg);
 }
 
 void LogSetLevel(LogLevel max_level) {

@@ -13,45 +13,40 @@
  * Flash ページ割当はコンパイル時テーブルで決定する。
  */
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
+#include <cstddef>
 
 /* ================================================================== */
 /*  File ID                                                           */
 /* ================================================================== */
 
-typedef enum {
+enum FlashFsFileId {
     FLASH_FS_FILE_LOG = 0,
     FLASH_FS_FILE_SETTINGS = 1,
     FLASH_FS_FILE_CALIB = 2,
     FLASH_FS_FILE_COUNT,
-} FlashFsFileId;
+};
 
 /* ================================================================== */
 /*  File Mode                                                         */
 /* ================================================================== */
 
-typedef enum {
+enum FlashFsMode {
     FLASH_FS_MODE_STREAM = 0, /**< Append-only ring buffer */
     FLASH_FS_MODE_BLOCK = 1,  /**< Fixed-block read/write */
-} FlashFsMode;
+};
 
 /* ================================================================== */
 /*  File Info (query)                                                  */
 /* ================================================================== */
 
-typedef struct {
+struct FlashFsFileInfo {
     FlashFsFileId id;
     FlashFsMode mode;
     const char *name;
     uint32_t capacity; /**< Total usable bytes */
     uint32_t used;     /**< Currently used bytes */
-} FlashFsFileInfo;
+};
 
 /* ================================================================== */
 /*  Init                                                              */
@@ -137,7 +132,3 @@ void flash_fs_erase(FlashFsFileId id);
  * @brief ファイル情報を取得する
  */
 bool flash_fs_get_info(FlashFsFileId id, FlashFsFileInfo *info);
-
-#ifdef __cplusplus
-}
-#endif

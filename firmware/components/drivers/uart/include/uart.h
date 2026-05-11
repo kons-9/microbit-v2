@@ -10,20 +10,16 @@
  * - デフォルトボーレート: 115200
  */
 
-#include <stdint.h>
-#include <stddef.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
+#include <cstddef>
 
 static constexpr uint32_t UART_BAUDRATE_9600 = 9600;
 static constexpr uint32_t UART_BAUDRATE_115200 = 115200;
 
 /** UART 設定 */
-typedef struct {
+struct UARTConfig {
     uint32_t m_baudrate;
-} UARTConfig;
+};
 
 /**
  * UART を初期化する
@@ -55,7 +51,3 @@ int32_t uart_read(uint8_t *buf, size_t buf_len, uint32_t timeout_ms);
  * @return 送信バイト数, 負値はエラー
  */
 int32_t uart_puts(const char *str);
-
-#ifdef __cplusplus
-}
-#endif

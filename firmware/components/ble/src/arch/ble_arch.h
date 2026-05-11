@@ -8,13 +8,9 @@
  * src 内部でのみ使用する。
  */
 
-#include <stdint.h>
+#include <cstdint>
 
 #include "ble.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * arch 層 → 共通層へのイベント通知コールバック型
@@ -22,7 +18,7 @@ extern "C" {
  * arch 実装がパケットを受信したとき、このコールバックで上位に通知する。
  * ble.cpp 側で登録する。
  */
-typedef void (*BLEArchOnAdvertiseCallback)(const ble_gap_discoveryDescriptor *descriptor);
+using BLEArchOnAdvertiseCallback = void (*)(const ble_gap_discoveryDescriptor *descriptor);
 
 /**
  * HW を初期化する
@@ -74,7 +70,3 @@ int32_t ble_arch_advertise_start(uint16_t interval_625us);
  * @return 0 on success
  */
 int32_t ble_arch_advertise_stop(void);
-
-#ifdef __cplusplus
-}
-#endif

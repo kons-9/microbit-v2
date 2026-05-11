@@ -13,12 +13,7 @@
  * 周波数範囲: 100Hz ~ 80kHz
  */
 
-#include <stdint.h>
-#include <stdbool.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cstdint>
 
 /** マイクを初期化する */
 void microphone_init(void);
@@ -43,7 +38,3 @@ uint16_t microphone_read(void);
  * @return レベル (0-255)
  */
 uint8_t microphone_get_level(void);
-
-#ifdef __cplusplus
-}
-#endif
