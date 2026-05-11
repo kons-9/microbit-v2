@@ -6,8 +6,10 @@
  * LED で結果を表示する。
  */
 
+#define LOG_TAG "TEST"
+#include "log.h"
+
 #include <osal/task>
-#include <osal/timer>
 #include <led.h>
 #include <led_font.h>
 #include <speaker.h>
@@ -286,14 +288,6 @@ static const TestEntry s_tests[] = {
 static constexpr int32_t NUM_TESTS = sizeof(s_tests) / sizeof(s_tests[0]);
 
 /* ==================================================================
- * LED scan タイマコールバック
- * ================================================================== */
-
-static void led_scan_callback(void *) {
-    led_scan_tick();
-}
-
-/* ==================================================================
  * Entry Point
  * ================================================================== */
 
@@ -304,6 +298,9 @@ extern "C" int usermain(void) {
 }
 
 static int app_main() {
+    LogInit(LOG_LEVEL_DEBUG);
+    LOG_I("factory-test start");
+
     led_init();
     speaker_init();
     microphone_init();
@@ -313,13 +310,13 @@ static int app_main() {
     touch_init();
     temperature_init();
 
-    osal::cyclic_timer scanTimer(led_scan_callback, 1);
-    scanTimer.start();
+    LOG_D("all peripherals initialized");
 
     TestResult results[NUM_TESTS];
     bool allPass = true;
 
     for (int32_t i = 0; i < NUM_TESTS; ++i) {
+        LOG_D("test[%d] %s begin", i, s_tests[i].m_name);
         show_test_number(i + 1);
         osal::task::sleep_for(500);
 
@@ -327,6 +324,9 @@ static int app_main() {
 
         if (results[i] != TestResult::Pass) {
             allPass = false;
+            LOG_W("test[%d] %s FAIL", i, s_tests[i].m_name);
+        } else {
+            LOG_D("test[%d] %s PASS", i, s_tests[i].m_name);
         }
 
         if (i < 4) {
@@ -341,8 +341,10 @@ static int app_main() {
 
     if (allPass) {
         show_check();
+        LOG_I("all tests PASSED");
     } else {
         show_cross();
+        LOG_W("some tests FAILED");
     }
 
     for (;;) {

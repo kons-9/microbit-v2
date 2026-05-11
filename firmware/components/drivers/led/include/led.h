@@ -35,9 +35,3 @@ void led_clear(void);
  * @param bitmap  bitmap[row] の bit0-4 が col0-4 に対応
  */
 void led_set_frame(const uint8_t bitmap[LED_ROWS]);
-
-/**
- * マトリクスの 1 行分を走査する
- * @pre 定期タイマから呼び出すこと
- */
-void led_scan_tick(void);
