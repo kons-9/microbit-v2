@@ -22,18 +22,39 @@ static bool s_enabled = false;
 static nrf_saadc_value_t s_sampleBuffer[1];
 
 static nrf_saadc_value_t saadc_sample_once(void) {
-    nrfx_saadc_init(NRFX_SAADC_DEFAULT_CONFIG_IRQ_PRIORITY);
+    if (auto err = nrfx_saadc_init(NRFX_SAADC_DEFAULT_CONFIG_IRQ_PRIORITY); err != 0) {
+        LOG_E("saadc_init failed: %d", err);
+        return 0;
+    }
 
     nrfx_saadc_channel_t channel = NRFX_SAADC_DEFAULT_CHANNEL_SE(NRF_SAADC_INPUT_AIN3, 0);
     channel.channel_config.gain = NRF_SAADC_GAIN1_4;
     channel.channel_config.reference = NRF_SAADC_REFERENCE_VDD4;
     channel.channel_config.acq_time = NRF_SAADC_ACQTIME_10US;
 
-    nrfx_saadc_channel_config(&channel);
-    nrfx_saadc_simple_mode_set((1U << 0), NRF_SAADC_RESOLUTION_10BIT, NRF_SAADC_OVERSAMPLE_DISABLED, nullptr);
-    nrfx_saadc_buffer_set(s_sampleBuffer, 1);
+    if (auto err = nrfx_saadc_channel_config(&channel); err != 0) {
+        LOG_E("saadc_channel_config failed: %d", err);
+        nrfx_saadc_uninit();
+        return 0;
+    }
+    if (auto err
+        = nrfx_saadc_simple_mode_set((1U << 0), NRF_SAADC_RESOLUTION_10BIT, NRF_SAADC_OVERSAMPLE_DISABLED, nullptr);
+        err != 0) {
+        LOG_E("saadc_simple_mode_set failed: %d", err);
+        nrfx_saadc_uninit();
+        return 0;
+    }
+    if (auto err = nrfx_saadc_buffer_set(s_sampleBuffer, 1); err != 0) {
+        LOG_E("saadc_buffer_set failed: %d", err);
+        nrfx_saadc_uninit();
+        return 0;
+    }
 
-    nrfx_saadc_mode_trigger();
+    if (auto err = nrfx_saadc_mode_trigger(); err != 0) {
+        LOG_E("saadc_mode_trigger failed: %d", err);
+        nrfx_saadc_uninit();
+        return 0;
+    }
 
     nrf_saadc_value_t result = s_sampleBuffer[0];
 

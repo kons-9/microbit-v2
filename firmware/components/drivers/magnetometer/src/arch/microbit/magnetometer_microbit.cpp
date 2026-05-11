@@ -59,7 +59,10 @@ bool magnetometer_init(void) {
     nrfx_twim_config_t config = NRFX_TWIM_DEFAULT_CONFIG(I2C_INT_SCL_PIN, I2C_INT_SDA_PIN);
     config.frequency = NRF_TWIM_FREQ_400K;
 
-    nrfx_twim_init(&s_twiInstance, &config, nullptr, nullptr);
+    if (auto err = nrfx_twim_init(&s_twiInstance, &config, nullptr, nullptr); err != 0) {
+        LOG_E("I2C init failed: %d", err);
+        return false;
+    }
     nrfx_twim_enable(&s_twiInstance);
 
     uint8_t id = magnetometer_who_am_i();
@@ -68,9 +71,18 @@ bool magnetometer_init(void) {
         return false;
     }
 
-    write_register(REG_CFG_REG_A_M, 0x8C);
-    write_register(REG_CFG_REG_B_M, 0x02);
-    write_register(REG_CFG_REG_C_M, 0x10);
+    if (!write_register(REG_CFG_REG_A_M, 0x8C)) {
+        LOG_E("write CFG_REG_A failed");
+        return false;
+    }
+    if (!write_register(REG_CFG_REG_B_M, 0x02)) {
+        LOG_E("write CFG_REG_B failed");
+        return false;
+    }
+    if (!write_register(REG_CFG_REG_C_M, 0x10)) {
+        LOG_E("write CFG_REG_C failed");
+        return false;
+    }
 
     LOG_D("init ok (WHO_AM_I=0x%02x)", id);
     return true;
@@ -97,7 +109,9 @@ MagnetometerData magnetometer_read(void) {
 
 uint8_t magnetometer_who_am_i(void) {
     uint8_t id = 0;
-    read_registers(REG_WHO_AM_I_M, &id, 1);
+    if (!read_registers(REG_WHO_AM_I_M, &id, 1)) {
+        LOG_E("read WHO_AM_I failed");
+    }
     return id;
 }
 

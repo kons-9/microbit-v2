@@ -30,12 +30,18 @@ bool touch_wait(uint32_t timeout_ms) {
 
     while (timeout_ms == 0 || elapsed < timeout_ms) {
         if (touch_is_touched()) {
-            tk_dly_tsk(DEBOUNCE_MS);
+            if (auto er = tk_dly_tsk(DEBOUNCE_MS); er < E_OK) {
+                LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
+                return false;
+            }
             if (touch_is_touched()) {
                 return true;
             }
         }
-        tk_dly_tsk(POLL_INTERVAL_MS);
+        if (auto er = tk_dly_tsk(POLL_INTERVAL_MS); er < E_OK) {
+            LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
+            return false;
+        }
         elapsed += POLL_INTERVAL_MS;
     }
     return false;

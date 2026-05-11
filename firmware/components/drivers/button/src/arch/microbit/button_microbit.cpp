@@ -46,12 +46,18 @@ bool button_wait_press(uint8_t id, uint32_t timeout_ms) {
 
     while (timeout_ms == 0 || elapsed < timeout_ms) {
         if (button_is_pressed(id)) {
-            tk_dly_tsk(DEBOUNCE_MS);
+            if (auto er = tk_dly_tsk(DEBOUNCE_MS); er < E_OK) {
+                LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
+                return false;
+            }
             if (button_is_pressed(id)) {
                 return true;
             }
         }
-        tk_dly_tsk(POLL_INTERVAL_MS);
+        if (auto er = tk_dly_tsk(POLL_INTERVAL_MS); er < E_OK) {
+            LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
+            return false;
+        }
         elapsed += POLL_INTERVAL_MS;
     }
     return false;
@@ -62,18 +68,27 @@ uint8_t button_wait_any(uint32_t timeout_ms) {
 
     while (timeout_ms == 0 || elapsed < timeout_ms) {
         if (button_is_pressed(0)) {
-            tk_dly_tsk(DEBOUNCE_MS);
+            if (auto er = tk_dly_tsk(DEBOUNCE_MS); er < E_OK) {
+                LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
+                return 0xFF;
+            }
             if (button_is_pressed(0)) {
                 return 0;
             }
         }
         if (button_is_pressed(1)) {
-            tk_dly_tsk(DEBOUNCE_MS);
+            if (auto er = tk_dly_tsk(DEBOUNCE_MS); er < E_OK) {
+                LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
+                return 0xFF;
+            }
             if (button_is_pressed(1)) {
                 return 1;
             }
         }
-        tk_dly_tsk(POLL_INTERVAL_MS);
+        if (auto er = tk_dly_tsk(POLL_INTERVAL_MS); er < E_OK) {
+            LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
+            return 0xFF;
+        }
         elapsed += POLL_INTERVAL_MS;
     }
     return 0;

@@ -71,8 +71,14 @@ bool accelerometer_init(void) {
         return false;
     }
 
-    write_register(REG_CTRL_REG1, 0x57);
-    write_register(REG_CTRL_REG4, 0x08);
+    if (!write_register(REG_CTRL_REG1, 0x57)) {
+        LOG_E("write CTRL_REG1 failed");
+        return false;
+    }
+    if (!write_register(REG_CTRL_REG4, 0x08)) {
+        LOG_E("write CTRL_REG4 failed");
+        return false;
+    }
     s_currentRange = 0;
 
     LOG_D("init ok (WHO_AM_I=0x%02x)", id);
@@ -84,7 +90,10 @@ void accelerometer_set_range(uint8_t range) {
         return;
     }
     uint8_t ctrl4 = 0x08 | (range << 4);
-    write_register(REG_CTRL_REG4, ctrl4);
+    if (!write_register(REG_CTRL_REG4, ctrl4)) {
+        LOG_E("write CTRL_REG4 failed");
+        return;
+    }
     s_currentRange = range;
 }
 
@@ -109,6 +118,8 @@ AccelerometerData accelerometer_read(void) {
 
 uint8_t accelerometer_who_am_i(void) {
     uint8_t id = 0;
-    read_registers(REG_WHO_AM_I, &id, 1);
+    if (!read_registers(REG_WHO_AM_I, &id, 1)) {
+        LOG_E("read WHO_AM_I failed");
+    }
     return id;
 }

@@ -33,7 +33,10 @@ void speaker_init(void) {
     config.count_mode = NRF_PWM_MODE_UP;
     config.load_mode = NRF_PWM_LOAD_COMMON;
 
-    nrfx_pwm_init(&s_pwmInstance, &config, nullptr, nullptr);
+    if (auto err = nrfx_pwm_init(&s_pwmInstance, &config, nullptr, nullptr); err != 0) {
+        LOG_E("init failed: %d", err);
+        return;
+    }
     s_playing = false;
     LOG_D("init: PWM0, pin=P0.00");
 }
