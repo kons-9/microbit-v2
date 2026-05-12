@@ -236,7 +236,9 @@ static TestResult test_microphone() {
     LOG_I("mic: sampling baseline...");
     uint32_t baseline = 0;
     for (int32_t i = 0; i < 16; ++i) {
-        baseline += microphone_read();
+        uint16_t sample = microphone_read();
+        LOG_D("mic: sample[%ld]=%u", i, sample);
+        baseline += sample;
         osal::task::sleep_for(6);
     }
     baseline /= 16;
@@ -248,7 +250,9 @@ static TestResult test_microphone() {
 
     uint32_t activeLevel = 0;
     for (int32_t i = 0; i < 16; ++i) {
-        activeLevel += microphone_read();
+        uint16_t sample = microphone_read();
+        LOG_D("mic: active_sample[%ld]=%u", i, sample);
+        activeLevel += sample;
         osal::task::sleep_for(6);
     }
     activeLevel /= 16;
@@ -329,7 +333,9 @@ static TestResult test_touch() {
 
 static TestResult test_temperature() {
     auto temp = temperature_read();
-    return (temp > 10 && temp < 50) ? TestResult::Pass : TestResult::Fail;
+    LOG_I("temp: %ld deg C", static_cast<int32_t>(temp));
+    LOG_I("temp: A=Pass, B=Fail");
+    return wait_user_judgment();
 }
 
 /* ==================================================================
