@@ -101,6 +101,19 @@ target_include_directories(flash_log_test PRIVATE
 )
 catch_discover_tests(flash_log_test TEST_PREFIX "[flash_log] ")
 
+# --- log_format (log_vformat テスト) ---
+add_executable(log_format_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/log/test/linux/test_log_format.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/log/src/log.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/shell/test/linux/mock_uart.cpp
+)
+target_link_libraries(log_format_test PRIVATE Catch2::Catch2WithMain)
+target_include_directories(log_format_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/log/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/drivers/uart/include
+)
+catch_discover_tests(log_format_test TEST_PREFIX "[log_format] ")
+
 # --- beacon ---
 add_executable(beacon_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../components/beacon/test/linux/test_beacon.cpp

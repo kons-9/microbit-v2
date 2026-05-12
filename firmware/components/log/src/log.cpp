@@ -119,25 +119,32 @@ static void log_vformat(const char *fmt, va_list ap) {
             fmt++;
         }
 
+        /* 長さ修飾子 */
+        bool is_long = false;
+        if (*fmt == 'l') {
+            is_long = true;
+            fmt++;
+        }
+
         /* 指定子 */
         switch (*fmt) {
         case 'd': {
-            int32_t v = va_arg(ap, int32_t);
+            int32_t v = is_long ? (int32_t)va_arg(ap, long) : va_arg(ap, int32_t);
             put_int(v, width, zero_pad);
             break;
         }
         case 'u': {
-            uint32_t v = va_arg(ap, uint32_t);
+            uint32_t v = is_long ? (uint32_t)va_arg(ap, unsigned long) : va_arg(ap, uint32_t);
             put_uint(v, 10, false, width, zero_pad);
             break;
         }
         case 'x': {
-            uint32_t v = va_arg(ap, uint32_t);
+            uint32_t v = is_long ? (uint32_t)va_arg(ap, unsigned long) : va_arg(ap, uint32_t);
             put_uint(v, 16, false, width, zero_pad);
             break;
         }
         case 'X': {
-            uint32_t v = va_arg(ap, uint32_t);
+            uint32_t v = is_long ? (uint32_t)va_arg(ap, unsigned long) : va_arg(ap, uint32_t);
             put_uint(v, 16, true, width, zero_pad);
             break;
         }
