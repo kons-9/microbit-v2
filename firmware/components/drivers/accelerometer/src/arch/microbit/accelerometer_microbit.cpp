@@ -11,6 +11,8 @@
 #include "nrf_gpio.h"
 #include "nrfx_twim.h"
 
+#include <cerrno>
+
 /* ==================================================================
  * Constants
  * ================================================================== */
@@ -30,7 +32,7 @@ static constexpr uint8_t REG_OUT_X_L = 0x28;
  * State
  * ================================================================== */
 
-static nrfx_twim_t s_twiInstance = NRFX_TWIM_INSTANCE(0);
+static nrfx_twim_t s_twiInstance = NRFX_TWIM_INSTANCE(NRF_TWIM0);
 static uint8_t s_currentRange = 0;
 
 static const int16_t s_scaleFactor[] = {1, 2, 4, 12};
@@ -59,8 +61,8 @@ bool accelerometer_init(void) {
     nrfx_twim_config_t config = NRFX_TWIM_DEFAULT_CONFIG(I2C_INT_SCL_PIN, I2C_INT_SDA_PIN);
     config.frequency = NRF_TWIM_FREQ_400K;
 
-    if (nrfx_twim_init(&s_twiInstance, &config, nullptr, nullptr) != 0) {
-        LOG_E("I2C init failed");
+    if (auto err = nrfx_twim_init(&s_twiInstance, &config, nullptr, nullptr); err != 0 && err != -EALREADY) {
+        LOG_E("I2C init failed: %d", err);
         return false;
     }
     nrfx_twim_enable(&s_twiInstance);

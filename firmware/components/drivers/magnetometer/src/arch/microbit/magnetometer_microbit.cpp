@@ -11,6 +11,7 @@
 #include "nrf_gpio.h"
 #include "nrfx_twim.h"
 
+#include <cerrno>
 #include <math.h>
 
 /* ==================================================================
@@ -34,7 +35,7 @@ static constexpr uint8_t REG_OUTX_L_REG_M = 0x68;
  * NOTE: I2C インスタンスは accelerometer と共有する設計を想定
  * ================================================================== */
 
-static nrfx_twim_t s_twiInstance = NRFX_TWIM_INSTANCE(0);
+static nrfx_twim_t s_twiInstance = NRFX_TWIM_INSTANCE(NRF_TWIM0);
 
 /* ==================================================================
  * Internal I2C helpers
@@ -59,7 +60,7 @@ bool magnetometer_init(void) {
     nrfx_twim_config_t config = NRFX_TWIM_DEFAULT_CONFIG(I2C_INT_SCL_PIN, I2C_INT_SDA_PIN);
     config.frequency = NRF_TWIM_FREQ_400K;
 
-    if (auto err = nrfx_twim_init(&s_twiInstance, &config, nullptr, nullptr); err != 0) {
+    if (auto err = nrfx_twim_init(&s_twiInstance, &config, nullptr, nullptr); err != 0 && err != -EALREADY) {
         LOG_E("I2C init failed: %d", err);
         return false;
     }
