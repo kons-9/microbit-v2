@@ -13,7 +13,7 @@
 
 static constexpr uint32_t SPEAKER_PIN = NRF_GPIO_PIN_MAP(0, 0);
 
-static nrfx_pwm_t s_pwmInstance = NRFX_PWM_INSTANCE(0);
+static nrfx_pwm_t s_pwmInstance = NRFX_PWM_INSTANCE(NRF_PWM0);
 static bool s_playing = false;
 
 static nrf_pwm_values_common_t s_pwmSeqValues[1];
