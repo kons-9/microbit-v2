@@ -51,7 +51,7 @@ void led_scan_tick(void) {
     s_currentRow = static_cast<uint8_t>((s_currentRow + 1) % LED_ROWS);
 
     for (int32_t c = 0; c < LED_COLS; c++) {
-        if (s_framebuf[s_currentRow] & (1U << c)) {
+        if (s_framebuf[s_currentRow] & (1U << (LED_COLS - 1 - c))) {
             nrf_gpio_pin_clear(s_colPins[c]);
         } else {
             nrf_gpio_pin_set(s_colPins[c]);
