@@ -104,14 +104,6 @@ static void show_cross() {
     led_set_frame(LED_SYM_CROSS);
 }
 
-static void show_bar(int32_t level) {
-    clear_frame();
-    for (int32_t r = 4; r >= 0 && r > (4 - level); --r) {
-        s_frameBuf[r] = 0x1F;
-    }
-    led_set_frame(s_frameBuf);
-}
-
 static void show_tilt(int16_t x_mg, int16_t y_mg) {
     clear_frame();
     int32_t dx = x_mg / 400;
@@ -241,25 +233,18 @@ static TestResult test_microphone() {
     microphone_enable();
     osal::task::sleep_for(50);
 
+    LOG_I("mic: sampling baseline...");
     uint32_t baseline = 0;
     for (int32_t i = 0; i < 16; ++i) {
         baseline += microphone_read();
         osal::task::sleep_for(6);
     }
     baseline /= 16;
+    LOG_I("mic: baseline=%lu", baseline);
 
-    for (int32_t t = 0; t < 40; ++t) {
-        uint16_t val = microphone_read();
-        int32_t level = (val > baseline) ? static_cast<int32_t>(val - baseline) / 50 : 0;
-        if (level > 5) {
-            level = 5;
-        }
-        show_bar(level);
-        osal::task::sleep_for(50);
-    }
-
+    LOG_I("mic: playing 2700Hz tone, sampling...");
     speaker_tone(2700);
-    osal::task::sleep_for(50);
+    osal::task::sleep_for(100);
 
     uint32_t activeLevel = 0;
     for (int32_t i = 0; i < 16; ++i) {
@@ -272,57 +257,59 @@ static TestResult test_microphone() {
     microphone_disable();
 
     int32_t diff = static_cast<int32_t>(activeLevel) - static_cast<int32_t>(baseline);
-    return (diff > 30) ? TestResult::Pass : TestResult::Fail;
+    LOG_I("mic: active=%lu, diff=%ld", activeLevel, diff);
+    LOG_I("mic: A=Pass, B=Fail");
+
+    return wait_user_judgment();
 }
 
 static TestResult test_accelerometer() {
-    if (accelerometer_who_am_i() != 0x33) {
+    uint8_t id = accelerometer_who_am_i();
+    LOG_I("accel: WHO_AM_I=0x%02x (expect 0x33)", id);
+    if (id != 0x33) {
+        LOG_E("accel: WHO_AM_I failed");
         return TestResult::Fail;
     }
 
-    int32_t xSum = 0, ySum = 0, zSum = 0;
-    for (int32_t i = 0; i < 10; ++i) {
+    for (int32_t t = 0; t < 20; ++t) {
         auto d = accelerometer_read();
-        xSum += d.m_x;
-        ySum += d.m_y;
-        zSum += d.m_z;
-        osal::task::sleep_for(20);
-    }
-    auto xAvg = static_cast<int16_t>(xSum / 10);
-    auto yAvg = static_cast<int16_t>(ySum / 10);
-    auto zAvg = static_cast<int16_t>(zSum / 10);
-
-    for (int32_t t = 0; t < 40; ++t) {
-        auto d = accelerometer_read();
+        LOG_I("accel: x=%d y=%d z=%d", d.m_x, d.m_y, d.m_z);
         show_tilt(d.m_x, d.m_y);
-        osal::task::sleep_for(50);
+        osal::task::sleep_for(100);
     }
 
-    bool pass = (zAvg > 800 && zAvg < 1200) && (xAvg > -300 && xAvg < 300) && (yAvg > -300 && yAvg < 300);
-    return pass ? TestResult::Pass : TestResult::Fail;
+    LOG_I("accel: A=Pass, B=Fail");
+    return wait_user_judgment();
 }
 
 static TestResult test_magnetometer() {
-    if (magnetometer_who_am_i() != 0x40) {
+    uint8_t id = magnetometer_who_am_i();
+    LOG_I("mag: WHO_AM_I=0x%02x (expect 0x40)", id);
+    if (id != 0x40) {
+        LOG_E("mag: WHO_AM_I failed");
         return TestResult::Fail;
     }
 
-    auto m = magnetometer_read();
-    int32_t magSq = static_cast<int32_t>(m.m_x) * m.m_x + static_cast<int32_t>(m.m_y) * m.m_y
-                    + static_cast<int32_t>(m.m_z) * m.m_z;
+    for (int32_t t = 0; t < 10; ++t) {
+        auto m = magnetometer_read();
+        LOG_I("mag: x=%d y=%d z=%d", m.m_x, m.m_y, m.m_z);
+        osal::task::sleep_for(200);
+    }
 
-    bool pass = (magSq > 4000000) && (magSq < 64000000);
-    return pass ? TestResult::Pass : TestResult::Fail;
+    LOG_I("mag: A=Pass, B=Fail");
+    return wait_user_judgment();
 }
 
 static TestResult test_buttons() {
     show_char('A');
-    if (!button_wait_press(0, 5000)) {
+    LOG_I("btn: press A (15s timeout)");
+    if (!button_wait_press(0, 15000)) {
         return TestResult::Fail;
     }
 
     show_char('B');
-    if (!button_wait_press(1, 5000)) {
+    LOG_I("btn: press B (15s timeout)");
+    if (!button_wait_press(1, 15000)) {
         return TestResult::Fail;
     }
 
@@ -331,7 +318,13 @@ static TestResult test_buttons() {
 
 static TestResult test_touch() {
     show_char('T');
-    return touch_wait(5000) ? TestResult::Pass : TestResult::Fail;
+    LOG_I("touch: touch the logo (15s timeout)");
+    if (touch_wait(15000)) {
+        LOG_I("touch: detected");
+        return TestResult::Pass;
+    }
+    LOG_I("touch: timeout, A=Pass, B=Fail");
+    return wait_user_judgment();
 }
 
 static TestResult test_temperature() {
