@@ -9,13 +9,12 @@ target_sources(shell PRIVATE
 target_include_directories(shell
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../drivers/uart/include
 )
 
 target_link_libraries(shell
     PUBLIC
         flash_fs
+        io
 )
 
 set_target_properties(shell PROPERTIES

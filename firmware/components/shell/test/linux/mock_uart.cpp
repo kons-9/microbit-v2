@@ -1,53 +1,70 @@
 /**
  * @file mock_uart.cpp
- * @brief テスト用 UART モック — 出力をバッファにキャプチャ
+ * @brief テスト用 io::Stream モック — 出力をバッファにキャプチャ
  */
 
-#include "uart.h"
+#include "io_stream.h"
 
 #include <cstring>
 #include <cstdio>
 
-static char s_outputBuf[4096];
-static size_t s_outputPos = 0;
+/* ================================================================== */
+/*  MockStream 実装                                                   */
+/* ================================================================== */
 
-/* テストヘルパ: 出力バッファをリセット */
+class MockStream : public io::Stream {
+  public:
+    int32_t write(const uint8_t *data, size_t len) override {
+        size_t space = sizeof(m_output_buf) - 1 - m_output_pos;
+        size_t to_copy = (len < space) ? len : space;
+        std::memcpy(m_output_buf + m_output_pos, data, to_copy);
+        m_output_pos += to_copy;
+        return static_cast<int32_t>(to_copy);
+    }
+
+    int32_t read(uint8_t * /*buf*/, size_t /*buf_len*/, uint32_t /*timeout_ms*/) override {
+        return 0;
+    }
+
+    void reset() {
+        m_output_pos = 0;
+        m_output_buf[0] = '\0';
+    }
+
+    const char *get_output() {
+        m_output_buf[m_output_pos] = '\0';
+        return m_output_buf;
+    }
+
+    size_t get_output_len() const {
+        return m_output_pos;
+    }
+
+  private:
+    char m_output_buf[4096] = {};
+    size_t m_output_pos = 0;
+};
+
+/* グローバルインスタンス (テスト全体で共有) */
+static MockStream s_mock_stream;
+
+/* ================================================================== */
+/*  C リンケージヘルパ (既存テストとの互換)                            */
+/* ================================================================== */
+
 extern "C" void mock_uart_reset() {
-    s_outputPos = 0;
-    s_outputBuf[0] = '\0';
+    s_mock_stream.reset();
 }
 
-/* テストヘルパ: 出力バッファ取得 */
 extern "C" const char *mock_uart_get_output() {
-    s_outputBuf[s_outputPos] = '\0';
-    return s_outputBuf;
+    return s_mock_stream.get_output();
 }
 
-/* テストヘルパ: 出力バッファ長取得 */
 extern "C" size_t mock_uart_get_output_len() {
-    return s_outputPos;
+    return s_mock_stream.get_output_len();
 }
 
-/* UART API モック実装 */
-
-int32_t uart_init(const UARTConfig * /*config*/) {
-    mock_uart_reset();
-    return 0;
-}
-
-int32_t uart_write(const uint8_t *data, size_t len) {
-    size_t space = sizeof(s_outputBuf) - 1 - s_outputPos;
-    size_t to_copy = (len < space) ? len : space;
-    std::memcpy(s_outputBuf + s_outputPos, data, to_copy);
-    s_outputPos += to_copy;
-    return static_cast<int32_t>(to_copy);
-}
-
-int32_t uart_read(uint8_t * /*buf*/, size_t /*buf_len*/, uint32_t /*timeout_ms*/) {
-    return 0;
-}
-
-int32_t uart_puts(const char *str) {
-    size_t len = std::strlen(str);
-    return uart_write(reinterpret_cast<const uint8_t *>(str), len);
+/* テストから MockStream インスタンスを取得する */
+io::Stream &mock_get_stream() {
+    return s_mock_stream;
 }

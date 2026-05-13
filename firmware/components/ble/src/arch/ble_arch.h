@@ -18,7 +18,7 @@
  * arch 実装がパケットを受信したとき、このコールバックで上位に通知する。
  * ble.cpp 側で登録する。
  */
-using BLEArchOnAdvertiseCallback = void (*)(const ble_gap_discoveryDescriptor *descriptor);
+using BLEArchOnAdvertiseCallback = void (*)(const ble::DiscoveryDescriptor *descriptor);
 
 /**
  * HW を初期化する

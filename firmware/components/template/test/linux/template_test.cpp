@@ -2,7 +2,7 @@
 #include "template.h"
 
 TEST_CASE("template_add basic", "[template]") {
-    REQUIRE(template_add(1, 2) == 3);
-    REQUIRE(template_add(-5, 5) == 0);
-    REQUIRE(template_add(0, 0) == 0);
+    REQUIRE(tmpl::add(1, 2) == 3);
+    REQUIRE(tmpl::add(-5, 5) == 0);
+    REQUIRE(tmpl::add(0, 0) == 0);
 }

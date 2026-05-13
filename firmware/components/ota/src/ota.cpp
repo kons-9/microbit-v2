@@ -12,13 +12,15 @@
 
 #include <cstring>
 
+namespace ota {
+
 /* ==================================================================
  * 内部状態
  * ================================================================== */
 
-static OTAState s_state = OTAState::Idle;
-static OTAProgressCallback s_progressCallback = nullptr;
-static OTAImageHeader s_header = {};
+static State s_state = State::Idle;
+static ProgressCallback s_progressCallback = nullptr;
+static ImageHeader s_header = {};
 static uint32_t s_receivedBytes = 0;
 
 /* ==================================================================
@@ -40,13 +42,13 @@ static uint32_t UpdateCRC32(uint32_t crc, const uint8_t *data, size_t length) {
  * API 実装
  * ================================================================== */
 
-int32_t ota_start_receive(void) {
-    s_state = OTAState::Idle;
+int32_t start_receive(void) {
+    s_state = State::Idle;
     s_receivedBytes = 0;
     s_progressCallback = nullptr;
     std::memset(&s_header, 0, sizeof(s_header));
 
-    s_state = OTAState::Receiving;
+    s_state = State::Receiving;
 
     /* TODO: BLE GATT サービス起動 & 受信ループ
      *
@@ -58,28 +60,28 @@ int32_t ota_start_receive(void) {
      * 5. 全データ受信後 CRC32 検証
      */
 
-    return static_cast<int32_t>(OTAError::Ok);
+    return static_cast<int32_t>(Error::Ok);
 }
 
-void ota_set_progress_callback(OTAProgressCallback callback) {
+void set_progress_callback(ProgressCallback callback) {
     s_progressCallback = callback;
 }
 
-uint8_t ota_get_state(void) {
+uint8_t get_state(void) {
     return static_cast<uint8_t>(s_state);
 }
 
-int32_t ota_switch_mode(sysconfig_boot_mode_t mode) {
-    if (mode == SYSCONFIG_BOOT_APP && s_state != OTAState::Complete) {
-        return static_cast<int32_t>(OTAError::State);
+int32_t switch_mode(sysconfig_boot_mode_t mode) {
+    if (mode == SYSCONFIG_BOOT_APP && s_state != State::Complete) {
+        return static_cast<int32_t>(Error::State);
     }
     ota_arch_reboot(mode);
     /* UNREACHABLE: ota_arch_reboot() は戻らない */
-    return static_cast<int32_t>(OTAError::Ok);
+    return static_cast<int32_t>(Error::Ok);
 }
 
-void ota_reset(void) {
-    s_state = OTAState::Idle;
+void reset(void) {
+    s_state = State::Idle;
     s_receivedBytes = 0;
     std::memset(&s_header, 0, sizeof(s_header));
 }
@@ -88,19 +90,19 @@ void ota_reset(void) {
  * Internal: GATT コールバックハンドラ
  * ================================================================== */
 
-int32_t ota_on_header_received(const OTAImageHeader *header) {
-    if (s_state != OTAState::Receiving) {
-        return static_cast<int32_t>(OTAError::State);
+int32_t on_header_received(const ImageHeader *header) {
+    if (s_state != State::Receiving) {
+        return static_cast<int32_t>(Error::State);
     }
 
-    if (header->magic != OTA_IMAGE_MAGIC) {
-        s_state = OTAState::Error;
-        return static_cast<int32_t>(OTAError::Checksum);
+    if (header->magic != IMAGE_MAGIC) {
+        s_state = State::Error;
+        return static_cast<int32_t>(Error::Checksum);
     }
 
     if (header->image_size > ota_arch_get_app_slot_size()) {
-        s_state = OTAState::Error;
-        return static_cast<int32_t>(OTAError::Size);
+        s_state = State::Error;
+        return static_cast<int32_t>(Error::Size);
     }
 
     std::memcpy(&s_header, header, sizeof(s_header));
@@ -108,17 +110,17 @@ int32_t ota_on_header_received(const OTAImageHeader *header) {
 
     ota_arch_flash_erase(0, s_header.image_size);
 
-    return static_cast<int32_t>(OTAError::Ok);
+    return static_cast<int32_t>(Error::Ok);
 }
 
-int32_t ota_on_data_received(const uint8_t *data, uint32_t length) {
-    if (s_state != OTAState::Receiving) {
-        return static_cast<int32_t>(OTAError::State);
+int32_t on_data_received(const uint8_t *data, uint32_t length) {
+    if (s_state != State::Receiving) {
+        return static_cast<int32_t>(Error::State);
     }
 
     if (s_receivedBytes + length > s_header.image_size) {
-        s_state = OTAState::Error;
-        return static_cast<int32_t>(OTAError::Size);
+        s_state = State::Error;
+        return static_cast<int32_t>(Error::Size);
     }
 
     ota_arch_flash_write(s_receivedBytes, data, length);
@@ -130,7 +132,7 @@ int32_t ota_on_data_received(const uint8_t *data, uint32_t length) {
 
     /* 全データ受信完了 → 検証 */
     if (s_receivedBytes >= s_header.image_size) {
-        s_state = OTAState::Verifying;
+        s_state = State::Verifying;
 
         uint32_t crc = 0;
         uint8_t buffer[256];
@@ -146,12 +148,14 @@ int32_t ota_on_data_received(const uint8_t *data, uint32_t length) {
         }
 
         if (crc != s_header.crc32) {
-            s_state = OTAState::Error;
-            return static_cast<int32_t>(OTAError::Checksum);
+            s_state = State::Error;
+            return static_cast<int32_t>(Error::Checksum);
         }
 
-        s_state = OTAState::Complete;
+        s_state = State::Complete;
     }
 
-    return static_cast<int32_t>(OTAError::Ok);
+    return static_cast<int32_t>(Error::Ok);
 }
+
+}  // namespace ota

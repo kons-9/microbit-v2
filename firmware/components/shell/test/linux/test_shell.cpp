@@ -4,10 +4,15 @@
 
 #include <cstring>
 
-/* Mock UART helpers */
+/* Mock helpers */
 extern "C" void mock_uart_reset();
 extern "C" const char *mock_uart_get_output();
 extern "C" size_t mock_uart_get_output_len();
+
+namespace io {
+class Stream;
+}
+extern io::Stream &mock_get_stream();
 
 /* Flash テスト用リセット */
 extern "C" void flash_fs_arch_test_reset();
@@ -15,9 +20,9 @@ extern "C" void flash_fs_arch_test_reset();
 struct ShellFixture {
     ShellFixture() {
         flash_fs_arch_test_reset();
-        flash_fs_init();
+        flash_fs::init();
         mock_uart_reset();
-        shell_init(nullptr, 0);
+        shell::init(mock_get_stream(), nullptr, 0);
         mock_uart_reset();  // Init時のプロンプト出力をクリア
     }
 
@@ -25,9 +30,9 @@ struct ShellFixture {
     void feed_line(const char *line) {
         mock_uart_reset();
         for (const char *p = line; *p; ++p) {
-            shell_feed_char(*p);
+            shell::feed_char(*p);
         }
-        shell_feed_char('\r');
+        shell::feed_char('\r');
     }
 };
 
@@ -103,13 +108,13 @@ static void custom_handler(int32_t argc, const char *const * /*argv*/) {
 
 TEST_CASE("shell_init with extra commands", "[shell]") {
     flash_fs_arch_test_reset();
-    flash_fs_init();
+    flash_fs::init();
     mock_uart_reset();
 
-    static const ShellCommand extra[] = {
+    static const shell::Command extra[] = {
         {"mycmd", "My test command", custom_handler},
     };
-    shell_init(extra, 1);
+    shell::init(mock_get_stream(), extra, 1);
     mock_uart_reset();
 
     s_customCalled = false;
@@ -117,7 +122,7 @@ TEST_CASE("shell_init with extra commands", "[shell]") {
 
     const char *line = "mycmd arg1 arg2\r";
     for (const char *p = line; *p; ++p) {
-        shell_feed_char(*p);
+        shell::feed_char(*p);
     }
 
     REQUIRE(s_customCalled);
@@ -131,13 +136,13 @@ TEST_CASE("shell_init with extra commands", "[shell]") {
 TEST_CASE_METHOD(ShellFixture, "Backspace removes character", "[shell]") {
     // Type "hXlp" then backspace+backspace+"elp" → "help"
     mock_uart_reset();
-    shell_feed_char('h');
-    shell_feed_char('X');
-    shell_feed_char('\b');  // delete 'X'
-    shell_feed_char('e');
-    shell_feed_char('l');
-    shell_feed_char('p');
-    shell_feed_char('\r');
+    shell::feed_char('h');
+    shell::feed_char('X');
+    shell::feed_char('\b');  // delete 'X'
+    shell::feed_char('e');
+    shell::feed_char('l');
+    shell::feed_char('p');
+    shell::feed_char('\r');
 
     const char *out = mock_uart_get_output();
     // Should execute "help" successfully (shows command list)

@@ -16,22 +16,24 @@
 
 #include <sysconfig.h>
 
+namespace crash {
+
 /* ==================================================================
  * 定数
  * ================================================================== */
 
 /** クラッシュ情報の有効性を示すマジックナンバー ("CRAS") */
-constexpr uint32_t CRASH_INFO_MAGIC = 0x43524153U;
+constexpr uint32_t INFO_MAGIC = 0x43524153U;
 
 /** スタックダンプのワード数 */
-constexpr uint32_t CRASH_STACK_DUMP_WORDS = 16;
+constexpr uint32_t STACK_DUMP_WORDS = 16;
 
 /* ==================================================================
  * 型定義
  * ================================================================== */
 
 /** フォルト種別 */
-enum class CrashFaultType : uint32_t {
+enum class FaultType : uint32_t {
     Hard = 1,
     Mem = 2,
     Bus = 3,
@@ -40,9 +42,9 @@ enum class CrashFaultType : uint32_t {
 };
 
 /** クラッシュ情報構造体 */
-struct CrashInfo {
-    uint32_t magic;      /**< CRASH_INFO_MAGIC if valid */
-    uint32_t fault_type; /**< CrashFaultType */
+struct Info {
+    uint32_t magic;      /**< INFO_MAGIC if valid */
+    uint32_t fault_type; /**< FaultType */
 
     /* Exception frame (CPU が自動 push した値) */
     uint32_t r0;
@@ -65,7 +67,7 @@ struct CrashInfo {
     uint32_t exc_return; /**< EXC_RETURN (LR at exception entry) */
 
     /* Stack dump (フォルト時のスタック上位Nワード) */
-    uint32_t stack_dump[CRASH_STACK_DUMP_WORDS];
+    uint32_t stack_dump[STACK_DUMP_WORDS];
 };
 
 /**
@@ -78,7 +80,7 @@ struct CrashInfo {
  * @param frame       exception frame ポインタ
  * @param exc_return  EXC_RETURN 値 (LR at exception entry)
  */
-using CrashHandlerCallback = void (*)(uint32_t type, uint32_t *frame, uint32_t exc_return);
+using HandlerCallback = void (*)(uint32_t type, uint32_t *frame, uint32_t exc_return);
 
 /* ==================================================================
  * API
@@ -92,7 +94,7 @@ using CrashHandlerCallback = void (*)(uint32_t type, uint32_t *frame, uint32_t e
  *
  * @param callback  ハンドラ関数 (nullptr でデフォルトに戻す)
  */
-void crash_set_handler(CrashHandlerCallback callback);
+void set_handler(HandlerCallback callback);
 
 /**
  * Settings page からクラッシュ情報を読み出す
@@ -100,9 +102,11 @@ void crash_set_handler(CrashHandlerCallback callback);
  * @param info  読み出し先バッファ
  * @return 0 if valid crash info found, -1 if none
  */
-int32_t crash_info_read(CrashInfo *info);
+int32_t info_read(Info *info);
 
 /**
  * Settings page のクラッシュ情報をクリアする (ブートモードは保持)
  */
-void crash_info_clear(void);
+void info_clear(void);
+
+}  // namespace crash

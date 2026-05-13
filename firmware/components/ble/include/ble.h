@@ -8,21 +8,23 @@
  * - Observer (passive scan): 位置推定の受信側
  * - Broadcaster (advertising): ビーコン発信側
  *
- * @pre ble_init() を呼んでからスキャン / アドバタイズを開始すること
+ * @pre ble::init() を呼んでからスキャン / アドバタイズを開始すること
  */
 
 #include <cstdint>
 #include <cstddef>
+
+namespace ble {
 
 /* ==================================================================
  * Address
  * ================================================================== */
 
 /** BLE アドレス長 (bytes) */
-constexpr uint8_t BLE_ADDRESS_LENGTH = 6;
+constexpr uint8_t ADDRESS_LENGTH = 6;
 
 /** BLE アドレスタイプ */
-enum class BLEAddressType : uint8_t {
+enum class AddressType : uint8_t {
     Public = 0x00,
     Random = 0x01,
     PublicId = 0x02,
@@ -30,7 +32,7 @@ enum class BLEAddressType : uint8_t {
 };
 
 /** BLE アドレス */
-struct BLEAddress {
+struct Address {
     uint8_t type;
     uint8_t value[6];
 };
@@ -39,7 +41,7 @@ struct BLEAddress {
  * Error Codes
  * ================================================================== */
 
-enum class BLEError : int32_t {
+enum class Error : int32_t {
     Success = 0,
     Unknown = 1,
     InvalidParam = 2,
@@ -51,8 +53,8 @@ enum class BLEError : int32_t {
  * Scan (Discovery) Parameters
  * ================================================================== */
 
-/** NimBLE互換: スキャンパラメータ */
-struct ble_gap_discoveryParams {
+/** スキャンパラメータ */
+struct DiscoveryParams {
     uint16_t interval;         /**< スキャン間隔 (単位: 0.625ms) */
     uint16_t window;           /**< スキャンウィンドウ (単位: 0.625ms) */
     uint8_t filter_policy;     /**< 0: accept all, 1: whitelist only */
@@ -65,9 +67,9 @@ struct ble_gap_discoveryParams {
  * Discovery Event Descriptor
  * ================================================================== */
 
-/** NimBLE互換: スキャン結果1件 */
-struct ble_gap_discoveryDescriptor {
-    BLEAddress address;  /**< Advertiser address */
+/** スキャン結果1件 */
+struct DiscoveryDescriptor {
+    Address address;     /**< Advertiser address */
     int8_t rssi;         /**< RSSI (dBm) */
     uint8_t data_length; /**< AD data length */
     const uint8_t *data; /**< AD data pointer (コールバック内のみ有効) */
@@ -79,16 +81,16 @@ struct ble_gap_discoveryDescriptor {
  * ================================================================== */
 
 /** GAP イベントタイプ */
-enum class BLEGapEventType : uint8_t {
+enum class GapEventType : uint8_t {
     Discovery = 0,         /**< Advertisement received */
     DiscoveryComplete = 1, /**< Discovery finished (duration expired) */
 };
 
 /** GAP イベント */
-struct BLEGapEvent {
-    uint8_t type; /**< BLEGapEventType */
+struct GapEvent {
+    uint8_t type; /**< GapEventType */
     union {
-        ble_gap_discoveryDescriptor discovery;
+        DiscoveryDescriptor discovery;
         struct {
             int32_t reason; /**< 0=完了, other=エラー */
         } discovery_complete;
@@ -101,7 +103,7 @@ struct BLEGapEvent {
  * @param argument  ユーザー指定の引数
  * @return 0: continue, 非ゼロ: スキャン停止
  */
-using BLEGapEventCallback = int32_t (*)(BLEGapEvent *event, void *argument);
+using GapEventCallback = int32_t (*)(GapEvent *event, void *argument);
 
 /* ==================================================================
  * Discovery (Scanner / Observer) API
@@ -114,15 +116,13 @@ using BLEGapEventCallback = int32_t (*)(BLEGapEvent *event, void *argument);
  * @post BLE ハードウェアが受信/送信可能な状態になる
  * @return 0 on success
  */
-int32_t ble_init(void);
+int32_t init(void);
 
 /**
  * スキャン (Discovery) を開始する
  *
- * NimBLE互換: ble_gap_disc(own_addr_type, duration_ms, disc_params, cb, cb_arg)
- *
- * @pre  ble_init() が成功していること
- * @pre  スキャン中でないこと (ble_gap_discovery_active() == 0)
+ * @pre  init() が成功していること
+ * @pre  スキャン中でないこと (gap_discovery_active() == 0)
  * @post スキャンが開始され、パケット受信のたびに callback が呼ばれる
  *
  * @param own_address_type  自局アドレス種別
@@ -130,13 +130,13 @@ int32_t ble_init(void);
  * @param params            スキャンパラメータ
  * @param callback          イベントコールバック
  * @param callback_argument コールバック引数
- * @return 0 on success, BLEError on failure
+ * @return 0 on success, Error on failure
  */
-int32_t ble_gap_discover(uint8_t own_address_type,
-                         int32_t duration_ms,
-                         const ble_gap_discoveryParams *params,
-                         BLEGapEventCallback callback,
-                         void *callback_argument);
+int32_t gap_discover(uint8_t own_address_type,
+                     int32_t duration_ms,
+                     const DiscoveryParams *params,
+                     GapEventCallback callback,
+                     void *callback_argument);
 
 /**
  * スキャンを中止する
@@ -144,23 +144,23 @@ int32_t ble_gap_discover(uint8_t own_address_type,
  * @post スキャンが停止し、disc_complete コールバックが呼ばれる
  * @return 0 on success
  */
-int32_t ble_gap_discover_cancel(void);
+int32_t gap_discover_cancel(void);
 
 /**
  * スキャン中かどうかを取得する
  * @return 1=scanning, 0=idle
  */
-int32_t ble_gap_discovery_active(void);
+int32_t gap_discovery_active(void);
 
 /* ==================================================================
  * Advertise (Broadcaster) API
  * ================================================================== */
 
 /** AD データの最大長 (BLE 4.x 仕様: 31 bytes) */
-constexpr uint8_t BLE_ADVERTISE_DATA_MAX_LENGTH = 31;
+constexpr uint8_t ADVERTISE_DATA_MAX_LENGTH = 31;
 
 /** Advertising パラメータ */
-struct BLEGapAdvertiseParams {
+struct GapAdvertiseParams {
     /**
      * Advertising 間隔 (単位: 0.625ms)
      *
@@ -182,27 +182,27 @@ struct BLEGapAdvertiseParams {
 /**
  * Advertising データを設定する
  *
- * @pre  ble_init() が成功していること
- * @post データが内部バッファにコピーされ、次回 ble_gap_advertise_start() で使用される
+ * @pre  init() が成功していること
+ * @post データが内部バッファにコピーされ、次回 gap_advertise_start() で使用される
  *
  * @param data  AD 構造体の配列 (AD Length + AD Type + AD Data の繰り返し)
- * @param length データ長 (最大 BLE_ADVERTISE_DATA_MAX_LENGTH)
+ * @param length データ長 (最大 ADVERTISE_DATA_MAX_LENGTH)
  * @return 0 on success
  */
-int32_t ble_gap_advertise_set_data(const uint8_t *data, uint8_t length);
+int32_t gap_advertise_set_data(const uint8_t *data, uint8_t length);
 
 /**
  * Advertising を開始する
  *
- * @pre  ble_init() が成功していること
- * @pre  ble_gap_advertise_set_data() でデータが設定済みであること
+ * @pre  init() が成功していること
+ * @pre  gap_advertise_set_data() でデータが設定済みであること
  * @post 指定間隔で ch37/38/39 に ADV パケットが送信される
  *
  * @param own_address_type  自局アドレス種別
  * @param params            Advertising パラメータ
- * @return 0 on success, BLEError on failure
+ * @return 0 on success, Error on failure
  */
-int32_t ble_gap_advertise_start(uint8_t own_address_type, const BLEGapAdvertiseParams *params);
+int32_t gap_advertise_start(uint8_t own_address_type, const GapAdvertiseParams *params);
 
 /**
  * Advertising を停止する
@@ -210,10 +210,12 @@ int32_t ble_gap_advertise_start(uint8_t own_address_type, const BLEGapAdvertiseP
  * @post Advertising が停止する
  * @return 0 on success
  */
-int32_t ble_gap_advertise_stop(void);
+int32_t gap_advertise_stop(void);
 
 /**
  * Advertising 中かどうかを取得する
  * @return 1=advertising, 0=idle
  */
-int32_t ble_gap_advertise_active(void);
+int32_t gap_advertise_active(void);
+
+}  // namespace ble

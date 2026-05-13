@@ -7,7 +7,7 @@
  * BLE GATT 経由でファームウェアイメージを受信し、
  * Flash のアプリケーションスロットに書き込む。
  *
- * @pre ota_start_receive() を呼ぶ前に ble_init() が完了していること
+ * @pre ota::start_receive() を呼ぶ前に ble::init() が完了していること
  */
 
 #include <cstdint>
@@ -15,11 +15,13 @@
 
 #include <sysconfig.h>
 
+namespace ota {
+
 /* ==================================================================
  * Error Codes
  * ================================================================== */
 
-enum class OTAError : int32_t {
+enum class Error : int32_t {
     Ok = 0,
     State = -1,    /**< 不正な状態遷移 */
     Checksum = -2, /**< チェックサム不一致 */
@@ -30,7 +32,7 @@ enum class OTAError : int32_t {
  * OTA State
  * ================================================================== */
 
-enum class OTAState : uint8_t {
+enum class State : uint8_t {
     Idle = 0,      /**< 待機中 */
     Receiving = 1, /**< イメージ受信中 */
     Verifying = 2, /**< チェックサム検証中 */
@@ -43,10 +45,10 @@ enum class OTAState : uint8_t {
  * ================================================================== */
 
 /** OTA イメージマジックナンバー ("OTA1") */
-constexpr uint32_t OTA_IMAGE_MAGIC = 0x4F544131U;
+constexpr uint32_t IMAGE_MAGIC = 0x4F544131U;
 
-struct OTAImageHeader {
-    uint32_t magic;      /**< マジックナンバー (OTA_IMAGE_MAGIC) */
+struct ImageHeader {
+    uint32_t magic;      /**< マジックナンバー (IMAGE_MAGIC) */
     uint32_t image_size; /**< イメージ本体サイズ (bytes) */
     uint32_t version;    /**< ファームウェアバージョン */
     uint32_t crc32;      /**< イメージ本体の CRC32 */
@@ -61,7 +63,7 @@ struct OTAImageHeader {
  * @param received_bytes  受信済みバイト数
  * @param total_bytes     イメージ全体のバイト数
  */
-using OTAProgressCallback = void (*)(uint32_t received_bytes, uint32_t total_bytes);
+using ProgressCallback = void (*)(uint32_t received_bytes, uint32_t total_bytes);
 
 /* ==================================================================
  * API
@@ -73,40 +75,40 @@ using OTAProgressCallback = void (*)(uint32_t received_bytes, uint32_t total_byt
  * BLE GATT サービスを起動し、ホストからのイメージ転送を待機する。
  * 受信完了またはエラーで返る。
  *
- * @pre  ble_init() が成功していること
- * @post 受信完了時は OTAState::Complete, エラー時は OTAState::Error になる
+ * @pre  ble::init() が成功していること
+ * @post 受信完了時は State::Complete, エラー時は State::Error になる
  *
- * @return 0 on success, OTAError on failure
+ * @return 0 on success, Error on failure
  */
-int32_t ota_start_receive(void);
+int32_t start_receive(void);
 
 /**
  * 進捗コールバックを設定する
  * @param callback  コールバック関数 (NULL で無効化)
  */
-void ota_set_progress_callback(OTAProgressCallback callback);
+void set_progress_callback(ProgressCallback callback);
 
 /**
  * 現在の OTA 状態を取得する
- * @return 現在の OTAState
+ * @return 現在の State
  */
-uint8_t ota_get_state(void);
+uint8_t get_state(void);
 
 /**
  * ブートモードを切り替えて再起動する
  *
- * @pre  App モードに切り替える場合は OTAState::Complete であること
+ * @pre  App モードに切り替える場合は State::Complete であること
  * @post 成功時はリセットし、この関数からは返らない
  *
  * @param mode  SYSCONFIG_BOOT_APP or SYSCONFIG_BOOT_UPDATER
- * @return OTAError::State (前提条件未達時のみ返る。成功時は返らない)
+ * @return Error::State (前提条件未達時のみ返る。成功時は返らない)
  */
-int32_t ota_switch_mode(sysconfig_boot_mode_t mode);
+int32_t switch_mode(sysconfig_boot_mode_t mode);
 
 /**
  * OTA 状態をリセットする (エラー後のリトライ用)
  */
-void ota_reset(void);
+void reset(void);
 
 /* ==================================================================
  * Internal: GATT コールバックから呼ばれるハンドラ
@@ -117,7 +119,7 @@ void ota_reset(void);
  * @param header  受信したイメージヘッダ
  * @return 0 on success
  */
-int32_t ota_on_header_received(const OTAImageHeader *header);
+int32_t on_header_received(const ImageHeader *header);
 
 /**
  * データチャンク受信ハンドラ
@@ -125,4 +127,6 @@ int32_t ota_on_header_received(const OTAImageHeader *header);
  * @param length  データ長 (bytes)
  * @return 0 on success
  */
-int32_t ota_on_data_received(const uint8_t *data, uint32_t length);
+int32_t on_data_received(const uint8_t *data, uint32_t length);
+
+}  // namespace ota

@@ -28,6 +28,8 @@
 
 #include <cstring>
 
+namespace flash_fs {
+
 /* ================================================================== */
 /*  Constants                                                         */
 /* ================================================================== */
@@ -42,8 +44,8 @@ static constexpr uint32_t ERASED_WORD = 0xFFFFFFFF;
 /* ================================================================== */
 
 struct FileTableEntry {
-    FlashFsFileId id;
-    FlashFsMode mode;
+    FileId id;
+    Mode mode;
     const char *name;
     uint32_t start_address;
     uint8_t page_count;
@@ -69,12 +71,12 @@ static const uint32_t CALIB_BASE_ADDR = reinterpret_cast<uint32_t>(__flash_fs_ca
 #endif
 
 static constexpr FileTableEntry FILE_TABLE[] = {
-    {FLASH_FS_FILE_LOG, FLASH_FS_MODE_STREAM, "log", 0, 4},           // 16KB
-    {FLASH_FS_FILE_SETTINGS, FLASH_FS_MODE_BLOCK, "settings", 0, 1},  //  4KB
-    {FLASH_FS_FILE_CALIB, FLASH_FS_MODE_BLOCK, "calib", 0, 1},        //  4KB
+    {FILE_LOG, MODE_STREAM, "log", 0, 4},           // 16KB
+    {FILE_SETTINGS, MODE_BLOCK, "settings", 0, 1},  //  4KB
+    {FILE_CALIB, MODE_BLOCK, "calib", 0, 1},        //  4KB
 };
 
-static_assert(sizeof(FILE_TABLE) / sizeof(FILE_TABLE[0]) == FLASH_FS_FILE_COUNT);
+static_assert(sizeof(FILE_TABLE) / sizeof(FILE_TABLE[0]) == FILE_COUNT);
 
 /* ================================================================== */
 /*  Runtime state                                                     */
@@ -91,8 +93,8 @@ struct StreamState {
 };
 
 static struct {
-    uint32_t base_address[FLASH_FS_FILE_COUNT];
-    StreamState stream[FLASH_FS_FILE_COUNT];
+    uint32_t base_address[FILE_COUNT];
+    StreamState stream[FILE_COUNT];
     bool initialized;
 } s_state;
 
@@ -100,11 +102,11 @@ static struct {
 /*  Internal helpers                                                  */
 /* ================================================================== */
 
-static uint32_t get_file_base_address(FlashFsFileId id) {
+static uint32_t get_file_base_address(FileId id) {
     return s_state.base_address[id];
 }
 
-static uint32_t get_page_address(FlashFsFileId id, uint32_t page_index) {
+static uint32_t get_page_address(FileId id, uint32_t page_index) {
     return get_file_base_address(id) + page_index * PAGE_SIZE;
 }
 
@@ -135,7 +137,7 @@ static uint32_t scan_write_offset(uint32_t page_addr) {
     return offset;
 }
 
-static void init_stream_state(FlashFsFileId id) {
+static void init_stream_state(FileId id) {
     const auto &entry = FILE_TABLE[id];
     auto &ss = s_state.stream[id];
 
@@ -178,7 +180,7 @@ static void init_stream_state(FlashFsFileId id) {
     }
 }
 
-static void advance_to_next_page(FlashFsFileId id) {
+static void advance_to_next_page(FileId id) {
     const auto &entry = FILE_TABLE[id];
     auto &ss = s_state.stream[id];
 
@@ -201,48 +203,48 @@ static void advance_to_next_page(FlashFsFileId id) {
 /*  Public API                                                        */
 /* ================================================================== */
 
-int32_t flash_fs_init(void) {
+int32_t init(void) {
     // ベースアドレスを設定
-    s_state.base_address[FLASH_FS_FILE_LOG] = LOG_BASE_ADDR;
-    s_state.base_address[FLASH_FS_FILE_SETTINGS] = SETTINGS_BASE_ADDR;
-    s_state.base_address[FLASH_FS_FILE_CALIB] = CALIB_BASE_ADDR;
+    s_state.base_address[FILE_LOG] = LOG_BASE_ADDR;
+    s_state.base_address[FILE_SETTINGS] = SETTINGS_BASE_ADDR;
+    s_state.base_address[FILE_CALIB] = CALIB_BASE_ADDR;
 
     LOG_D("init: log=0x%08lx settings=0x%08lx calib=0x%08lx", LOG_BASE_ADDR, SETTINGS_BASE_ADDR, CALIB_BASE_ADDR);
 
     // Stream ファイルの状態を復元
-    for (uint8_t i = 0; i < FLASH_FS_FILE_COUNT; ++i) {
-        if (FILE_TABLE[i].mode == FLASH_FS_MODE_STREAM) {
-            init_stream_state(static_cast<FlashFsFileId>(i));
+    for (uint8_t i = 0; i < FILE_COUNT; ++i) {
+        if (FILE_TABLE[i].mode == MODE_STREAM) {
+            init_stream_state(static_cast<FileId>(i));
         }
     }
 
     s_state.initialized = true;
     LOG_D("init done (stream page=%lu offset=%lu)",
-          s_state.stream[FLASH_FS_FILE_LOG].current_page,
-          s_state.stream[FLASH_FS_FILE_LOG].write_offset);
+          s_state.stream[FILE_LOG].current_page,
+          s_state.stream[FILE_LOG].write_offset);
     return 0;
 }
 
-const char *flash_fs_get_name(FlashFsFileId id) {
-    if (id >= FLASH_FS_FILE_COUNT) {
+const char *get_name(FileId id) {
+    if (id >= FILE_COUNT) {
         return nullptr;
     }
     return FILE_TABLE[id].name;
 }
 
-FlashFsFileId flash_fs_find_by_name(const char *name) {
-    for (uint8_t i = 0; i < FLASH_FS_FILE_COUNT; ++i) {
+FileId find_by_name(const char *name) {
+    for (uint8_t i = 0; i < FILE_COUNT; ++i) {
         if (std::strcmp(FILE_TABLE[i].name, name) == 0) {
-            return static_cast<FlashFsFileId>(i);
+            return static_cast<FileId>(i);
         }
     }
-    return FLASH_FS_FILE_COUNT;
+    return FILE_COUNT;
 }
 
 /* --- Stream --- */
 
-bool flash_fs_append(FlashFsFileId id, const void *data, size_t size) {
-    if (id >= FLASH_FS_FILE_COUNT || FILE_TABLE[id].mode != FLASH_FS_MODE_STREAM) {
+bool append(FileId id, const void *data, size_t size) {
+    if (id >= FILE_COUNT || FILE_TABLE[id].mode != MODE_STREAM) {
         return false;
     }
     if (size == 0 || size > (PAGE_SIZE - PAGE_HEADER_SIZE)) {
@@ -267,8 +269,8 @@ bool flash_fs_append(FlashFsFileId id, const void *data, size_t size) {
     return true;
 }
 
-size_t flash_fs_read(FlashFsFileId id, uint32_t offset, void *buf, size_t size) {
-    if (id >= FLASH_FS_FILE_COUNT || FILE_TABLE[id].mode != FLASH_FS_MODE_STREAM) {
+size_t read(FileId id, uint32_t offset, void *buf, size_t size) {
+    if (id >= FILE_COUNT || FILE_TABLE[id].mode != MODE_STREAM) {
         return 0;
     }
 
@@ -318,8 +320,8 @@ size_t flash_fs_read(FlashFsFileId id, uint32_t offset, void *buf, size_t size) 
 
 /* --- Block --- */
 
-bool flash_fs_block_write(FlashFsFileId id, uint32_t offset, const void *data, size_t size) {
-    if (id >= FLASH_FS_FILE_COUNT || FILE_TABLE[id].mode != FLASH_FS_MODE_BLOCK) {
+bool block_write(FileId id, uint32_t offset, const void *data, size_t size) {
+    if (id >= FILE_COUNT || FILE_TABLE[id].mode != MODE_BLOCK) {
         return false;
     }
 
@@ -334,8 +336,8 @@ bool flash_fs_block_write(FlashFsFileId id, uint32_t offset, const void *data, s
     return true;
 }
 
-size_t flash_fs_block_read(FlashFsFileId id, uint32_t offset, void *buf, size_t size) {
-    if (id >= FLASH_FS_FILE_COUNT || FILE_TABLE[id].mode != FLASH_FS_MODE_BLOCK) {
+size_t block_read(FileId id, uint32_t offset, void *buf, size_t size) {
+    if (id >= FILE_COUNT || FILE_TABLE[id].mode != MODE_BLOCK) {
         return 0;
     }
 
@@ -356,8 +358,8 @@ size_t flash_fs_block_read(FlashFsFileId id, uint32_t offset, void *buf, size_t 
 
 /* --- 共通 --- */
 
-void flash_fs_erase(FlashFsFileId id) {
-    if (id >= FLASH_FS_FILE_COUNT) {
+void erase(FileId id) {
+    if (id >= FILE_COUNT) {
         return;
     }
 
@@ -367,7 +369,7 @@ void flash_fs_erase(FlashFsFileId id) {
     }
 
     // Stream状態をリセット
-    if (entry.mode == FLASH_FS_MODE_STREAM) {
+    if (entry.mode == MODE_STREAM) {
         auto &ss = s_state.stream[id];
         ss.current_page = 0;
         ss.write_offset = PAGE_HEADER_SIZE;
@@ -381,8 +383,8 @@ void flash_fs_erase(FlashFsFileId id) {
     }
 }
 
-bool flash_fs_get_info(FlashFsFileId id, FlashFsFileInfo *info) {
-    if (id >= FLASH_FS_FILE_COUNT || info == nullptr) {
+bool get_info(FileId id, FileInfo *info) {
+    if (id >= FILE_COUNT || info == nullptr) {
         return false;
     }
 
@@ -392,7 +394,7 @@ bool flash_fs_get_info(FlashFsFileId id, FlashFsFileInfo *info) {
     info->name = entry.name;
     info->capacity = entry.page_count * PAGE_SIZE;
 
-    if (entry.mode == FLASH_FS_MODE_STREAM) {
+    if (entry.mode == MODE_STREAM) {
         // 使用量: 全有効ページの write_offset 合計
         uint32_t used = 0;
         for (uint8_t p = 0; p < entry.page_count; ++p) {
@@ -411,3 +413,4 @@ bool flash_fs_get_info(FlashFsFileId id, FlashFsFileInfo *info) {
 
     return true;
 }
+}  // namespace flash_fs

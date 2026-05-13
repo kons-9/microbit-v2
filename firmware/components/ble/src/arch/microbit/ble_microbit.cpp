@@ -238,7 +238,7 @@ extern "C" void RADIO_IRQHandler(void) {
             goto next_channel;
         }
 
-        ble_gap_discoveryDescriptor descriptor;
+        ble::DiscoveryDescriptor descriptor;
         memset(&descriptor, 0, sizeof(descriptor));
 
         descriptor.address.type = tx_add ? 0x01 : 0x00;
