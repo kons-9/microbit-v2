@@ -126,4 +126,4 @@ uint16_t Magnetometer::heading() {
     return static_cast<uint16_t>(h);
 }
 
-} // namespace drivers
+}  // namespace drivers

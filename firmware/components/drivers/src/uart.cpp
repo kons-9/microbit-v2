@@ -36,4 +36,4 @@ int32_t Uart::puts(const char *str) {
     return write(reinterpret_cast<const uint8_t *>(str), len);
 }
 
-} // namespace drivers
+}  // namespace drivers

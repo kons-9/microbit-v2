@@ -103,4 +103,4 @@ int32_t gap_discovery_active(void) {
     return 0;
 }
 
-} // namespace ble
+}  // namespace ble

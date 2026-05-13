@@ -96,4 +96,4 @@ uint8_t Button::wait_any(uint32_t timeout_ms) {
     return 0;
 }
 
-} // namespace drivers
+}  // namespace drivers

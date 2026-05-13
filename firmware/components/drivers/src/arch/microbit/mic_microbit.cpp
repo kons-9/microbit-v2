@@ -108,4 +108,4 @@ uint8_t Microphone::get_level() {
     return static_cast<uint8_t>(read() >> 2);
 }
 
-} // namespace drivers
+}  // namespace drivers

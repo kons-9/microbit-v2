@@ -28,7 +28,9 @@
 #include <cstdint>
 #include <cstddef>
 
-namespace io { class Stream; }
+namespace io {
+class Stream;
+}
 
 /* ------------------------------------------------------------------ */
 /* ログレベル定義                                                      */

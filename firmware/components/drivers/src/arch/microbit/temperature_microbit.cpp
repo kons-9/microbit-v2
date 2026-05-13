@@ -37,4 +37,4 @@ int8_t Temperature::read() {
     return temp;
 }
 
-} // namespace drivers
+}  // namespace drivers

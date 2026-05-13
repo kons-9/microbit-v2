@@ -127,4 +127,4 @@ uint8_t Accelerometer::who_am_i() {
     return id;
 }
 
-} // namespace drivers
+}  // namespace drivers

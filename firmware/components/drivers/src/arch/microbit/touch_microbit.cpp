@@ -49,4 +49,4 @@ bool Touch::wait(uint32_t timeout_ms) {
     return false;
 }
 
-} // namespace drivers
+}  // namespace drivers

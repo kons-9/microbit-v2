@@ -110,4 +110,4 @@ void Led::set_frame(const uint8_t bitmap[LED_ROWS]) {
     }
 }
 
-} // namespace drivers
+}  // namespace drivers

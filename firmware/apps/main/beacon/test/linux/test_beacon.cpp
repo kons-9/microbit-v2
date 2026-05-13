@@ -19,7 +19,9 @@ extern "C" void mock_uart_reset();
 extern "C" const char *mock_uart_get_output();
 extern "C" size_t mock_uart_get_output_len();
 
-namespace io { class Stream; }
+namespace io {
+class Stream;
+}
 extern io::Stream &mock_get_stream();
 
 /* ================================================================== */

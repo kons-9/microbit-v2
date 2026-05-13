@@ -11,7 +11,9 @@
 extern "C" void mock_uart_reset();
 extern "C" const char *mock_uart_get_output();
 
-namespace io { class Stream; }
+namespace io {
+class Stream;
+}
 extern io::Stream &mock_get_stream();
 
 /* LogOutput のプレフィックス "[I/TEST] " を除いた本文を取得（末尾改行除去） */
