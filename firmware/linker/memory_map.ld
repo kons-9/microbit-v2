@@ -7,9 +7,9 @@
  */
 
 /* ---- Flash Layout (512 KB total) ---- */
-__softdevice_end   = 0x00026000;  /* SoftDevice S140: 0x00000000 - 0x00025FFF (152 KB) */
-__app_slot_start   = 0x00026000;  /* Application slot start */
-__app_slot_end     = 0x0006E000;  /* Application slot end (288 KB) */
+__softdevice_end   = 0x00027000;  /* SoftDevice S140 v7.3.0: hex extends to 0x26498, next page = 0x27000 */
+__app_slot_start   = 0x00027000;  /* Application slot start (after SoftDevice page) */
+__app_slot_end     = 0x0006E000;  /* Application slot end (284 KB) */
 __updater_start    = 0x0006E000;  /* Updater start */
 __updater_end      = 0x00078000;  /* Updater end (40 KB) */
 __bootloader_start = 0x00078000;  /* Bootloader start */
