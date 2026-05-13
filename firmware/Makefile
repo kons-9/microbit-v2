@@ -86,9 +86,10 @@ flash-factory-test: build-factory-test venv
 	pyocd erase --mass
 	pyocd flash $(FACTORY_TEST)
 
-flash-integration-test: build-integration-test venv
+flash-integration-test: build-integration-test venv $(SOFTDEVICE_HEX)
 	. venv/bin/activate
 	pyocd erase --mass
+	pyocd flash $(SOFTDEVICE_HEX)
 	pyocd flash $(INTEGRATION_TEST)
 
 $(MAIN):
