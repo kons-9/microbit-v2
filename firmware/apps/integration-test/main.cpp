@@ -62,16 +62,16 @@ static uint32_t s_fail_count = 0;
 
 static void test_uart_rx() {
     LOG_I("=== UART RX Test ===");
-    LOG_I("3秒以内に任意の文字を送信してください...");
+    LOG_I("Send any char within 3 seconds...");
 
     uint8_t buf[16];
-    auto received = uart_read(buf, sizeof(buf), 3000);
+    auto received = s_uart.read(buf, sizeof(buf), 3000);
 
     if (received > 0) {
-        LOG_I("受信: %ld bytes", static_cast<int32_t>(received));
+        LOG_I("received: %ld bytes", static_cast<int32_t>(received));
         TEST_ASSERT(true, "uart_read");
     } else {
-        LOG_I("タイムアウト (入力なし — スキップ)");
+        LOG_I("timeout (no input - skipped)");
         TEST_ASSERT(true, "uart_read (skipped)");
     }
 }
@@ -154,14 +154,14 @@ static void test_crash() {
     auto result = crash::info_read(&info);
 
     if (result == 0) {
-        LOG_I("前回クラッシュあり: fault_type=%lu, pc=0x%lx", info.fault_type, info.pc);
+        LOG_I("previous crash found: fault_type=%lu, pc=0x%lx", info.fault_type, info.pc);
         crash::info_clear();
-        LOG_I("クラッシュ情報をクリアしました");
+        LOG_I("crash info cleared");
 
         result = crash::info_read(&info);
         TEST_ASSERT(result != 0, "crash_info: cleared");
     } else {
-        LOG_I("前回クラッシュなし");
+        LOG_I("no previous crash");
         TEST_ASSERT(true, "crash_info: no crash (ok)");
     }
 }
@@ -278,9 +278,9 @@ static void test_ble() {
     tk_dly_tsk(2500);
 
     if (s_ble_scan_received) {
-        LOG_I("BLE デバイスを検出しました");
+        LOG_I("BLE device found");
     } else {
-        LOG_I("BLE デバイス未検出 (周囲に無い場合は正常)");
+        LOG_I("no BLE device found (ok if none nearby)");
     }
     TEST_ASSERT(true, "ble_gap_discover completed");
 }
