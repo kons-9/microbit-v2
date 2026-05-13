@@ -69,28 +69,28 @@ venv:
 flash: build venv $(SOFTDEVICE_HEX)
 	. venv/bin/activate
 	pyocd erase --mass
-	pyocd flash $(SOFTDEVICE_HEX)
-	pyocd flash $(MAIN)
+	pyocd flash --erase=none $(SOFTDEVICE_HEX)
+	pyocd flash --erase=none $(MAIN)
 
 flash-updater: build-updater venv $(SOFTDEVICE_HEX)
 	. venv/bin/activate
-	pyocd flash $(UPDATER)
+	pyocd flash --erase=none $(UPDATER)
 
 flash-sample: build-sample venv
 	. venv/bin/activate
 	pyocd erase --mass
-	pyocd flash $(SAMPLE)
+	pyocd flash --erase=none $(SAMPLE)
 
 flash-factory-test: build-factory-test venv
 	. venv/bin/activate
 	pyocd erase --mass
-	pyocd flash $(FACTORY_TEST)
+	pyocd flash --erase=none $(FACTORY_TEST)
 
 flash-integration-test: build-integration-test venv $(SOFTDEVICE_HEX)
 	. venv/bin/activate
 	pyocd erase --mass
-	pyocd flash $(SOFTDEVICE_HEX)
-	pyocd flash $(INTEGRATION_TEST)
+	pyocd flash --erase=none $(SOFTDEVICE_HEX)
+	pyocd flash --erase=none $(INTEGRATION_TEST)
 
 $(MAIN):
 	cmake -B build/$(BUILD_TYPE)/main -DAPP_TARGET=main -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
