@@ -23,17 +23,17 @@ static void updater_task(INT stacd, void *exinf) {
     (void)stacd;
     (void)exinf;
 
-    auto err = ble_init();
+    auto err = ble::init();
     if (err != 0) {
         goto fail;
     }
 
-    err = ota_start_receive();
+    err = ota::start_receive();
     if (err != 0) {
         goto fail;
     }
 
-    ota_switch_mode(SYSCONFIG_BOOT_APP);
+    ota::switch_mode(SYSCONFIG_BOOT_APP);
 
 fail:
     tk_slp_tsk(TMO_FEVR);

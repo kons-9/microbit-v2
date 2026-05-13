@@ -43,7 +43,7 @@ static int32_t s_initialized = 0;
 /*  AD Data builder                                                   */
 /* ================================================================== */
 
-static uint8_t s_adData[BLE_ADVERTISE_DATA_MAX_LENGTH];
+static uint8_t s_adData[ble::ADVERTISE_DATA_MAX_LENGTH];
 static uint8_t s_adDataLength = 0;
 
 static void build_ad_data(void) {
@@ -79,17 +79,17 @@ static void build_ad_data(void) {
 static int32_t start_advertising(void) {
     build_ad_data();
 
-    auto result = ble_gap_advertise_set_data(s_adData, s_adDataLength);
+    auto result = ble::gap_advertise_set_data(s_adData, s_adDataLength);
     if (result != 0) {
         return result;
     }
 
-    BLEGapAdvertiseParams params = {};
+    ble::GapAdvertiseParams params = {};
     params.interval_min = MS_TO_BLE_UNITS(s_config.interval_ms);
     params.interval_max = MS_TO_BLE_UNITS(s_config.interval_ms);
     params.advertise_type = 2;
 
-    return ble_gap_advertise_start(static_cast<uint8_t>(BLEAddressType::Random), &params);
+    return ble::gap_advertise_start(static_cast<uint8_t>(ble::AddressType::Random), &params);
 }
 
 /* ================================================================== */
@@ -98,48 +98,48 @@ static int32_t start_advertising(void) {
 
 static void cmd_beacon(int32_t argc, const char *const *argv) {
     if (argc < 2) {
-        shell_puts("Usage: beacon <start|stop|status|interval [ms]>\r\n");
+        shell::puts("Usage: beacon <start|stop|status|interval [ms]>\r\n");
         return;
     }
 
     if (std::strcmp(argv[1], "start") == 0) {
         if (is_active()) {
-            shell_puts("Already active\r\n");
+            shell::puts("Already active\r\n");
             return;
         }
         auto result = start();
         if (result == 0) {
-            shell_puts("OK\r\n");
+            shell::puts("OK\r\n");
         } else {
-            shell_printf("Error: %ld\r\n", static_cast<long>(result));
+            shell::printf("Error: %ld\r\n", static_cast<long>(result));
         }
     } else if (std::strcmp(argv[1], "stop") == 0) {
         stop();
-        shell_puts("OK\r\n");
+        shell::puts("OK\r\n");
     } else if (std::strcmp(argv[1], "status") == 0) {
         if (is_active()) {
-            shell_printf("Beacon: active (interval=%u ms)\r\n", static_cast<unsigned>(s_config.interval_ms));
+            shell::printf("Beacon: active (interval=%u ms)\r\n", static_cast<unsigned>(s_config.interval_ms));
         } else {
-            shell_puts("Beacon: stopped\r\n");
+            shell::puts("Beacon: stopped\r\n");
         }
     } else if (std::strcmp(argv[1], "interval") == 0) {
         if (argc < 3) {
-            shell_printf("interval: %u ms\r\n", static_cast<unsigned>(s_config.interval_ms));
+            shell::printf("interval: %u ms\r\n", static_cast<unsigned>(s_config.interval_ms));
             return;
         }
         auto val = static_cast<uint16_t>(std::strtoul(argv[2], nullptr, 10));
         auto result = set_interval(val);
         if (result == 0) {
-            shell_printf("OK: interval=%u ms\r\n", static_cast<unsigned>(val));
+            shell::printf("OK: interval=%u ms\r\n", static_cast<unsigned>(val));
         } else {
-            shell_puts("Error: invalid interval (20-10240 ms)\r\n");
+            shell::puts("Error: invalid interval (20-10240 ms)\r\n");
         }
     } else {
-        shell_puts("Unknown subcommand\r\n");
+        shell::puts("Unknown subcommand\r\n");
     }
 }
 
-static const ShellCommand BEACON_CMDS[] = {
+static const shell::Command BEACON_CMDS[] = {
     {"beacon", "beacon <start|stop|status|interval> - BLE beacon control", cmd_beacon},
 };
 
@@ -161,7 +161,7 @@ int32_t init(const Config *config) {
 
     s_initialized = 1;
     LOG_D("init: interval=%u ms, tx_power=%d", s_config.interval_ms, s_config.tx_power);
-    return ble_init();
+    return ble::init();
 }
 
 int32_t start(void) {
@@ -169,7 +169,7 @@ int32_t start(void) {
         return -1;
     }
     if (is_active()) {
-        return static_cast<int32_t>(BLEError::Busy);
+        return static_cast<int32_t>(ble::Error::Busy);
     }
     LOG_D("start advertising");
     return start_advertising();
@@ -177,11 +177,11 @@ int32_t start(void) {
 
 int32_t stop(void) {
     LOG_D("stop");
-    return ble_gap_advertise_stop();
+    return ble::gap_advertise_stop();
 }
 
 int32_t is_active(void) {
-    return ble_gap_advertise_active();
+    return ble::gap_advertise_active();
 }
 
 int32_t set_interval(uint16_t interval_ms) {
@@ -193,7 +193,7 @@ int32_t set_interval(uint16_t interval_ms) {
 
     /* 発信中なら再起動 */
     if (is_active()) {
-        ble_gap_advertise_stop();
+        ble::gap_advertise_stop();
         return start_advertising();
     }
 
@@ -204,7 +204,7 @@ uint16_t get_interval(void) {
     return s_config.interval_ms;
 }
 
-const ShellCommand *get_shell_commands(uint8_t *count) {
+const shell::Command *get_shell_commands(uint8_t *count) {
     if (count != nullptr) {
         *count = BEACON_CMD_COUNT;
     }

@@ -1,3 +1,5 @@
+add_subdirectory(beacon)
+
 add_executable(app_main.elf
     main.cpp
 )
@@ -11,7 +13,8 @@ target_link_libraries(app_main.elf
         beacon
         shell
         flash_fs
-        uart
+        io
+        drivers
 )
 
 # リンカスクリプト

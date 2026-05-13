@@ -78,6 +78,6 @@ uint16_t get_interval(void);
  * @param[out] count  コマンド数
  * @return コマンドテーブルへのポインタ
  */
-const ShellCommand *get_shell_commands(uint8_t *count);
+const shell::Command *get_shell_commands(uint8_t *count);
 
 }  // namespace beacon

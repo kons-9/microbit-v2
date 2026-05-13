@@ -9,9 +9,6 @@ target_sources(beacon PRIVATE
 target_include_directories(beacon
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../shell/include
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../ble/include
 )
 
 target_link_libraries(beacon
@@ -19,7 +16,7 @@ target_link_libraries(beacon
         shell
     PRIVATE
         ble
-        log
+        io
 )
 
 set_target_properties(beacon PROPERTIES

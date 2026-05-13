@@ -1,3 +1,6 @@
+add_subdirectory(${CMAKE_SOURCE_DIR}/apps/main/beacon
+                 ${CMAKE_BINARY_DIR}/beacon)
+
 add_executable(app_main.elf
     main.cpp
 )
@@ -6,14 +9,14 @@ target_link_libraries(app_main.elf
     PRIVATE
         template
         utkernel_cpp
-        log
+        io
         crash
         ble
         beacon
         shell
         flash_fs
         signal
-        uart
+        drivers
 )
 
 # リンカスクリプト (SoftDevice + app 領域)

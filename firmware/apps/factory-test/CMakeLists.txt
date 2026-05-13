@@ -6,15 +6,8 @@ target_link_libraries(app_main.elf
     PRIVATE
         template
         osal
-        log
-        led
-        speaker
-        mic
-        accelerometer
-        magnetometer
-        button
-        touch
-        temperature
+        io
+        drivers
         nrfx
 )
 

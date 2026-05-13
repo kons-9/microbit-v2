@@ -19,6 +19,7 @@
 #include <button.h>
 #include <touch.h>
 #include <temperature.h>
+#include <uart.h>
 
 #include <nrf.h>
 #include <tk/tkernel.h>
@@ -26,6 +27,20 @@
 
 #include <cstdint>
 #include <cstring>
+
+/* ==================================================================
+ * Peripheral instances
+ * ================================================================== */
+
+static drivers::Led s_led;
+static drivers::Speaker s_speaker;
+static drivers::Microphone s_mic;
+static drivers::Accelerometer s_accel;
+static drivers::Magnetometer s_mag;
+static drivers::Button s_button;
+static drivers::Touch s_touch;
+static drivers::Temperature s_temp;
+static drivers::Uart s_uart;
 
 /* ==================================================================
  * LED scan timer (TIMER2)
@@ -40,7 +55,7 @@ static void led_timer_isr(UINT intno) {
         return;
     }
     NRF_TIMER2->EVENTS_COMPARE[0] = 0;
-    led_scan_tick();
+    s_led.scan_tick();
 }
 
 static bool led_timer_init(void) {
@@ -82,26 +97,26 @@ enum class TestResult : uint8_t {
  * LED 表示ヘルパー
  * ================================================================== */
 
-static uint8_t s_frameBuf[LED_ROWS];
+static uint8_t s_frameBuf[drivers::LED_ROWS];
 
 static void clear_frame() {
     std::memset(s_frameBuf, 0, sizeof(s_frameBuf));
-    led_set_frame(s_frameBuf);
+    s_led.set_frame(s_frameBuf);
 }
 
 static void show_char(char c) {
     const auto *pat = led_font_get(c);
     if (pat != nullptr) {
-        led_set_frame(pat);
+        s_led.set_frame(pat);
     }
 }
 
 static void show_check() {
-    led_set_frame(LED_SYM_CHECK);
+    s_led.set_frame(LED_SYM_CHECK);
 }
 
 static void show_cross() {
-    led_set_frame(LED_SYM_CROSS);
+    s_led.set_frame(LED_SYM_CROSS);
 }
 
 static void show_tilt(int16_t x_mg, int16_t y_mg) {
@@ -123,12 +138,12 @@ static void show_tilt(int16_t x_mg, int16_t y_mg) {
     int32_t col = 2 + dx;
     int32_t row = 2 + dy;
     s_frameBuf[row] = static_cast<uint8_t>(1 << col);
-    led_set_frame(s_frameBuf);
+    s_led.set_frame(s_frameBuf);
 }
 
 static void show_result_row(int32_t row, TestResult result) {
     s_frameBuf[row] = (result == TestResult::Pass) ? 0x1F : 0x04;
-    led_set_frame(s_frameBuf);
+    s_led.set_frame(s_frameBuf);
 }
 
 /* ==================================================================
@@ -138,7 +153,7 @@ static void show_result_row(int32_t row, TestResult result) {
 static TestResult wait_user_judgment() {
     LOG_D("waiting for user judgment: A=Pass, B=Fail");
     for (;;) {
-        auto btn = button_wait_any(0);
+        auto btn = s_button.wait_any(0);
         if (btn == 0) {
             return TestResult::Pass;
         }
@@ -153,62 +168,62 @@ static TestResult wait_user_judgment() {
  * ================================================================== */
 
 static TestResult test_led() {
-    led_set_frame(LED_SYM_FULL);
+    s_led.set_frame(LED_SYM_FULL);
     osal::task::sleep_for(500);
 
-    led_clear();
+    s_led.clear();
     osal::task::sleep_for(500);
 
-    for (int32_t r = 0; r < LED_ROWS; ++r) {
+    for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
         clear_frame();
         s_frameBuf[r] = 0x1F;
-        led_set_frame(s_frameBuf);
+        s_led.set_frame(s_frameBuf);
         osal::task::sleep_for(50);
     }
-    for (int32_t r = 0; r < LED_ROWS; ++r) {
+    for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
         clear_frame();
-        s_frameBuf[LED_ROWS - 1 - r] = 0x1F;
-        led_set_frame(s_frameBuf);
+        s_frameBuf[drivers::LED_ROWS - 1 - r] = 0x1F;
+        s_led.set_frame(s_frameBuf);
         osal::task::sleep_for(50);
     }
-    for (int32_t c = 0; c < LED_COLS; ++c) {
+    for (int32_t c = 0; c < drivers::LED_COLS; ++c) {
         clear_frame();
-        for (int32_t r = 0; r < LED_ROWS; ++r) {
+        for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
             s_frameBuf[r] = static_cast<uint8_t>(1U << c);
         }
-        led_set_frame(s_frameBuf);
+        s_led.set_frame(s_frameBuf);
         osal::task::sleep_for(50);
     }
-    for (int32_t c = 0; c < LED_COLS; ++c) {
+    for (int32_t c = 0; c < drivers::LED_COLS; ++c) {
         clear_frame();
-        for (int32_t r = 0; r < LED_ROWS; ++r) {
-            s_frameBuf[r] |= static_cast<uint8_t>(1U << (LED_COLS - 1 - c));
+        for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
+            s_frameBuf[r] |= static_cast<uint8_t>(1U << (drivers::LED_COLS - 1 - c));
         }
-        led_set_frame(s_frameBuf);
+        s_led.set_frame(s_frameBuf);
         osal::task::sleep_for(50);
     }
     clear_frame();
-    for (int32_t r = 0; r < LED_ROWS; ++r) {
-        for (int32_t c = 0; c < LED_COLS; ++c) {
-            led_set(r, c, true);
+    for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
+        for (int32_t c = 0; c < drivers::LED_COLS; ++c) {
+            s_led.set(r, c, true);
             osal::task::sleep_for(10);
         }
     }
-    for (int32_t r = 0; r < LED_ROWS; ++r) {
-        for (int32_t c = 0; c < LED_COLS; ++c) {
-            led_set(r, c, false);
+    for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
+        for (int32_t c = 0; c < drivers::LED_COLS; ++c) {
+            s_led.set(r, c, false);
             osal::task::sleep_for(10);
         }
     }
     for (int32_t r = 0; r < 10; ++r) {
         {
             const uint8_t checker[5] = {0x15, 0x0A, 0x15, 0x0A, 0x15};
-            led_set_frame(checker);
+            s_led.set_frame(checker);
         }
         osal::task::sleep_for(100);
         {
             const uint8_t checker[5] = {0x0A, 0x15, 0x0A, 0x15, 0x0A};
-            led_set_frame(checker);
+            s_led.set_frame(checker);
         }
         osal::task::sleep_for(100);
     }
@@ -218,25 +233,25 @@ static TestResult test_led() {
 }
 
 static TestResult test_speaker() {
-    speaker_tone(1000);
+    s_speaker.tone(1000);
     osal::task::sleep_for(500);
 
-    speaker_tone(2700);
+    s_speaker.tone(2700);
     osal::task::sleep_for(500);
 
-    speaker_stop();
+    s_speaker.stop();
 
     return wait_user_judgment();
 }
 
 static TestResult test_microphone() {
-    microphone_enable();
+    s_mic.enable();
     osal::task::sleep_for(50);
 
     LOG_I("mic: sampling baseline...");
     uint32_t baseline = 0;
     for (int32_t i = 0; i < 16; ++i) {
-        uint16_t sample = microphone_read();
+        uint16_t sample = s_mic.read();
         LOG_D("mic: sample[%ld]=%u", i, sample);
         baseline += sample;
         osal::task::sleep_for(6);
@@ -245,20 +260,20 @@ static TestResult test_microphone() {
     LOG_I("mic: baseline=%lu", baseline);
 
     LOG_I("mic: playing 2700Hz tone, sampling...");
-    speaker_tone(2700);
+    s_speaker.tone(2700);
     osal::task::sleep_for(100);
 
     uint32_t activeLevel = 0;
     for (int32_t i = 0; i < 16; ++i) {
-        uint16_t sample = microphone_read();
+        uint16_t sample = s_mic.read();
         LOG_D("mic: active_sample[%ld]=%u", i, sample);
         activeLevel += sample;
         osal::task::sleep_for(6);
     }
     activeLevel /= 16;
 
-    speaker_stop();
-    microphone_disable();
+    s_speaker.stop();
+    s_mic.disable();
 
     int32_t diff = static_cast<int32_t>(activeLevel) - static_cast<int32_t>(baseline);
     LOG_I("mic: active=%lu, diff=%ld", activeLevel, diff);
@@ -268,7 +283,7 @@ static TestResult test_microphone() {
 }
 
 static TestResult test_accelerometer() {
-    uint8_t id = accelerometer_who_am_i();
+    uint8_t id = s_accel.who_am_i();
     LOG_I("accel: WHO_AM_I=0x%02x (expect 0x33)", id);
     if (id != 0x33) {
         LOG_E("accel: WHO_AM_I failed");
@@ -276,7 +291,7 @@ static TestResult test_accelerometer() {
     }
 
     for (int32_t t = 0; t < 20; ++t) {
-        auto d = accelerometer_read();
+        auto d = s_accel.read();
         LOG_I("accel: x=%d y=%d z=%d", d.m_x, d.m_y, d.m_z);
         show_tilt(d.m_x, d.m_y);
         osal::task::sleep_for(100);
@@ -287,7 +302,7 @@ static TestResult test_accelerometer() {
 }
 
 static TestResult test_magnetometer() {
-    uint8_t id = magnetometer_who_am_i();
+    uint8_t id = s_mag.who_am_i();
     LOG_I("mag: WHO_AM_I=0x%02x (expect 0x40)", id);
     if (id != 0x40) {
         LOG_E("mag: WHO_AM_I failed");
@@ -295,7 +310,7 @@ static TestResult test_magnetometer() {
     }
 
     for (int32_t t = 0; t < 10; ++t) {
-        auto m = magnetometer_read();
+        auto m = s_mag.read();
         LOG_I("mag: x=%d y=%d z=%d", m.m_x, m.m_y, m.m_z);
         osal::task::sleep_for(200);
     }
@@ -307,13 +322,13 @@ static TestResult test_magnetometer() {
 static TestResult test_buttons() {
     show_char('A');
     LOG_I("btn: press A (15s timeout)");
-    if (!button_wait_press(0, 15000)) {
+    if (!s_button.wait_press(0, 15000)) {
         return TestResult::Fail;
     }
 
     show_char('B');
     LOG_I("btn: press B (15s timeout)");
-    if (!button_wait_press(1, 15000)) {
+    if (!s_button.wait_press(1, 15000)) {
         return TestResult::Fail;
     }
 
@@ -323,7 +338,7 @@ static TestResult test_buttons() {
 static TestResult test_touch() {
     show_char('T');
     LOG_I("touch: touch the logo (15s timeout)");
-    if (touch_wait(15000)) {
+    if (s_touch.wait(15000)) {
         LOG_I("touch: detected");
         return TestResult::Pass;
     }
@@ -332,7 +347,7 @@ static TestResult test_touch() {
 }
 
 static TestResult test_temperature() {
-    auto temp = temperature_read();
+    auto temp = s_temp.read();
     LOG_I("temp: %ld deg C", static_cast<int32_t>(temp));
     LOG_I("temp: A=Pass, B=Fail");
     return wait_user_judgment();
@@ -373,18 +388,19 @@ extern "C" int usermain(void) {
 }
 
 static int app_main() {
-    LogInit(LOG_LEVEL_DEBUG);
+    s_uart.init();
+    LogInit(LOG_LEVEL_DEBUG, s_uart);
     LOG_I("factory-test start");
 
-    led_init();
+    s_led.init();
     led_timer_init();
-    speaker_init();
-    microphone_init();
-    accelerometer_init();
-    magnetometer_init();
-    button_init();
-    touch_init();
-    temperature_init();
+    s_speaker.init();
+    s_mic.init();
+    s_accel.init();
+    s_mag.init();
+    s_button.init();
+    s_touch.init();
+    s_temp.init();
 
     LOG_D("all peripherals initialized");
 

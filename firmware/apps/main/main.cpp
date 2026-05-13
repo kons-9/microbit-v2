@@ -18,9 +18,16 @@
 #include <tm/tmonitor.h>
 
 #include "beacon.h"
+#include "flash_fs.h"
+#include "log.h"
 #include "shell.h"
 #include "uart.h"
-#include "flash_fs.h"
+
+/* ==================================================================
+ * Peripheral instances
+ * ================================================================== */
+
+static drivers::Uart s_uart;
 
 /* ==================================================================
  * ヘルパー
@@ -41,7 +48,7 @@ static void shell_task(INT stacd, void *exinf) {
     (void)exinf;
 
     for (;;) {
-        shell_poll();
+        shell::poll();
         tk_dly_tsk(10); /* 10ms ポーリング周期 */
     }
 }
@@ -71,18 +78,19 @@ static int app_main() {
     TM_PUT(reinterpret_cast<UB *>(const_cast<char *>("BLE Beacon App\n")));
 
     /* UART 初期化 */
-    uart_init(nullptr);
+    s_uart.init();
+    LogInit(LOG_LEVEL_INFO, s_uart);
 
     /* Flash FS 初期化 */
-    flash_fs_init();
+    flash_fs::init();
 
     /* Beacon モジュール初期化 (BLE init 含む) */
     beacon::init(nullptr);
 
     /* Shell 初期化 (beacon コマンド登録) */
     uint8_t cmd_count = 0;
-    const ShellCommand *cmds = beacon::get_shell_commands(&cmd_count);
-    shell_init(cmds, cmd_count);
+    const shell::Command *cmds = beacon::get_shell_commands(&cmd_count);
+    shell::init(s_uart, cmds, cmd_count);
 
     /* Beacon 自動開始 */
     beacon::start();

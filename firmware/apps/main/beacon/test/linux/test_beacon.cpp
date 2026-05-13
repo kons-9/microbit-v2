@@ -19,6 +19,9 @@ extern "C" void mock_uart_reset();
 extern "C" const char *mock_uart_get_output();
 extern "C" size_t mock_uart_get_output_len();
 
+namespace io { class Stream; }
+extern io::Stream &mock_get_stream();
+
 /* ================================================================== */
 /*  Mock: BLE (テスト用ステート)                                      */
 /* ================================================================== */
@@ -42,7 +45,7 @@ extern "C" void flash_fs_arch_test_reset();
 struct BeaconFixture {
     BeaconFixture() {
         flash_fs_arch_test_reset();
-        flash_fs_init();
+        flash_fs::init();
         mock_uart_reset();
         mock_ble_reset();
     }
@@ -50,9 +53,9 @@ struct BeaconFixture {
     void feed_line(const char *line) {
         mock_uart_reset();
         for (const char *p = line; *p; ++p) {
-            shell_feed_char(*p);
+            shell::feed_char(*p);
         }
-        shell_feed_char('\r');
+        shell::feed_char('\r');
     }
 };
 
@@ -141,11 +144,11 @@ TEST_CASE_METHOD(BeaconFixture, "beacon_set_interval restarts if active", "[beac
 
 TEST_CASE_METHOD(BeaconFixture, "shell: beacon start/stop", "[beacon][shell]") {
     uint8_t count = 0;
-    const ShellCommand *cmds = beacon::get_shell_commands(&count);
+    const shell::Command *cmds = beacon::get_shell_commands(&count);
     REQUIRE(count > 0);
 
     beacon::init(nullptr);
-    shell_init(cmds, count);
+    shell::init(mock_get_stream(), cmds, count);
     mock_uart_reset();
 
     feed_line("beacon start");
@@ -161,9 +164,9 @@ TEST_CASE_METHOD(BeaconFixture, "shell: beacon start/stop", "[beacon][shell]") {
 
 TEST_CASE_METHOD(BeaconFixture, "shell: beacon status", "[beacon][shell]") {
     uint8_t count = 0;
-    const ShellCommand *cmds = beacon::get_shell_commands(&count);
+    const shell::Command *cmds = beacon::get_shell_commands(&count);
     beacon::init(nullptr);
-    shell_init(cmds, count);
+    shell::init(mock_get_stream(), cmds, count);
     mock_uart_reset();
 
     feed_line("beacon status");
@@ -178,9 +181,9 @@ TEST_CASE_METHOD(BeaconFixture, "shell: beacon status", "[beacon][shell]") {
 
 TEST_CASE_METHOD(BeaconFixture, "shell: beacon interval", "[beacon][shell]") {
     uint8_t count = 0;
-    const ShellCommand *cmds = beacon::get_shell_commands(&count);
+    const shell::Command *cmds = beacon::get_shell_commands(&count);
     beacon::init(nullptr);
-    shell_init(cmds, count);
+    shell::init(mock_get_stream(), cmds, count);
     mock_uart_reset();
 
     feed_line("beacon interval 500");
@@ -191,9 +194,9 @@ TEST_CASE_METHOD(BeaconFixture, "shell: beacon interval", "[beacon][shell]") {
 
 TEST_CASE_METHOD(BeaconFixture, "shell: help includes beacon", "[beacon][shell]") {
     uint8_t count = 0;
-    const ShellCommand *cmds = beacon::get_shell_commands(&count);
+    const shell::Command *cmds = beacon::get_shell_commands(&count);
     beacon::init(nullptr);
-    shell_init(cmds, count);
+    shell::init(mock_get_stream(), cmds, count);
     mock_uart_reset();
 
     feed_line("help");

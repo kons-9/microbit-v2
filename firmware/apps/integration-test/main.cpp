@@ -33,6 +33,12 @@
 #include <cstring>
 
 /* ==================================================================
+ * Peripheral instances
+ * ================================================================== */
+
+static drivers::Uart s_uart;
+
+/* ==================================================================
  * ヘルパー
  * ================================================================== */
 
@@ -144,15 +150,15 @@ static void test_signal() {
 static void test_crash() {
     LOG_I("=== Crash Info Test ===");
 
-    CrashInfo info;
-    auto result = crash_info_read(&info);
+    crash::Info info;
+    auto result = crash::info_read(&info);
 
     if (result == 0) {
         LOG_I("前回クラッシュあり: fault_type=%lu, pc=0x%lx", info.fault_type, info.pc);
-        crash_info_clear();
+        crash::info_clear();
         LOG_I("クラッシュ情報をクリアしました");
 
-        result = crash_info_read(&info);
+        result = crash::info_read(&info);
         TEST_ASSERT(result != 0, "crash_info: cleared");
     } else {
         LOG_I("前回クラッシュなし");
@@ -167,42 +173,42 @@ static void test_crash() {
 static void test_flash_fs() {
     LOG_I("=== Flash FS Test ===");
 
-    auto init_result = flash_fs_init();
+    auto init_result = flash_fs::init();
     LOG_I("flash_fs_init: %ld", init_result);
     TEST_ASSERT(init_result == 0, "flash_fs_init");
 
     /* ファイル名 → ID 変換 */
-    auto log_name = flash_fs_get_name(FLASH_FS_FILE_LOG);
+    auto log_name = flash_fs::get_name(flash_fs::FILE_LOG);
     LOG_I("file[0] name: %s", log_name ? log_name : "(null)");
-    TEST_ASSERT(log_name != nullptr, "flash_fs_get_name(LOG)");
+    TEST_ASSERT(log_name != nullptr, "flash_fs::get_name(LOG)");
 
     /* ファイル情報取得 */
-    FlashFsFileInfo file_info;
-    bool info_ok = flash_fs_get_info(FLASH_FS_FILE_SETTINGS, &file_info);
+    flash_fs::FileInfo file_info;
+    bool info_ok = flash_fs::get_info(flash_fs::FILE_SETTINGS, &file_info);
     LOG_I("settings: mode=%lu, capacity=%lu, used=%lu",
           static_cast<uint32_t>(file_info.mode),
           file_info.capacity,
           file_info.used);
-    TEST_ASSERT(info_ok, "flash_fs_get_info(SETTINGS)");
+    TEST_ASSERT(info_ok, "flash_fs::get_info(SETTINGS)");
 
     /* Block write / read (SETTINGS ファイル) */
     const uint32_t test_val = 0xDEADBEEF;
-    bool write_ok = flash_fs_block_write(FLASH_FS_FILE_SETTINGS, 0, &test_val, sizeof(test_val));
+    bool write_ok = flash_fs::block_write(flash_fs::FILE_SETTINGS, 0, &test_val, sizeof(test_val));
     TEST_ASSERT(write_ok, "flash_fs_block_write");
 
     uint32_t read_val = 0;
-    auto read_sz = flash_fs_block_read(FLASH_FS_FILE_SETTINGS, 0, &read_val, sizeof(read_val));
+    auto read_sz = flash_fs::block_read(flash_fs::FILE_SETTINGS, 0, &read_val, sizeof(read_val));
     LOG_I("read back: 0x%lx (size=%lu)", read_val, static_cast<uint32_t>(read_sz));
     TEST_ASSERT(read_sz == sizeof(test_val) && read_val == test_val, "flash_fs_block_read matches");
 
     /* Stream append / read (LOG ファイル) */
-    flash_fs_erase(FLASH_FS_FILE_LOG);
+    flash_fs::erase(flash_fs::FILE_LOG);
     const char msg[] = "hello";
-    bool append_ok = flash_fs_append(FLASH_FS_FILE_LOG, msg, sizeof(msg));
+    bool append_ok = flash_fs::append(flash_fs::FILE_LOG, msg, sizeof(msg));
     TEST_ASSERT(append_ok, "flash_fs_append");
 
     char read_buf[16] = {};
-    auto stream_sz = flash_fs_read(FLASH_FS_FILE_LOG, 0, read_buf, sizeof(read_buf));
+    auto stream_sz = flash_fs::read(flash_fs::FILE_LOG, 0, read_buf, sizeof(read_buf));
     LOG_I("stream read: \"%s\" (size=%lu)", read_buf, static_cast<uint32_t>(stream_sz));
     TEST_ASSERT(stream_sz >= sizeof(msg) && std::memcmp(read_buf, msg, sizeof(msg)) == 0, "flash_fs_read matches");
 }
@@ -213,8 +219,8 @@ static void test_flash_fs() {
 
 static volatile bool s_ble_scan_received = false;
 
-static int32_t ble_scan_callback(BLEGapEvent *event, void *) {
-    if (event->type == static_cast<uint8_t>(BLEGapEventType::Discovery)) {
+static int32_t ble_scan_callback(ble::GapEvent *event, void *) {
+    if (event->type == static_cast<uint8_t>(ble::GapEventType::Discovery)) {
         s_ble_scan_received = true;
     }
     return 0;
@@ -223,7 +229,7 @@ static int32_t ble_scan_callback(BLEGapEvent *event, void *) {
 static void test_ble() {
     LOG_I("=== BLE Test ===");
 
-    auto ble_result = ble_init();
+    auto ble_result = ble::init();
     LOG_I("ble_init: %ld", ble_result);
     TEST_ASSERT(ble_result == 0, "ble_init");
 
@@ -239,32 +245,32 @@ static void test_ble() {
         0xAA,
         0xBB,
     };
-    auto set_result = ble_gap_advertise_set_data(ad_data, sizeof(ad_data));
-    TEST_ASSERT(set_result == 0, "ble_gap_advertise_set_data");
+    auto set_result = ble::gap_advertise_set_data(ad_data, sizeof(ad_data));
+    TEST_ASSERT(set_result == 0, "ble::gap_advertise_set_data");
 
-    BLEGapAdvertiseParams adv_params = {};
+    ble::GapAdvertiseParams adv_params = {};
     adv_params.interval_min = 160; /* 100ms */
     adv_params.interval_max = 160;
     adv_params.advertise_type = 0; /* connectable undirected */
 
-    auto adv_result = ble_gap_advertise_start(0, &adv_params);
+    auto adv_result = ble::gap_advertise_start(0, &adv_params);
     LOG_I("advertise_start: %ld", adv_result);
-    TEST_ASSERT(adv_result == 0, "ble_gap_advertise_start");
+    TEST_ASSERT(adv_result == 0, "ble::gap_advertise_start");
 
-    TEST_ASSERT(ble_gap_advertise_active() == 1, "ble_gap_advertise_active");
+    TEST_ASSERT(ble::gap_advertise_active() == 1, "ble::gap_advertise_active");
 
-    ble_gap_advertise_stop();
-    TEST_ASSERT(ble_gap_advertise_active() == 0, "ble_gap_advertise stopped");
+    ble::gap_advertise_stop();
+    TEST_ASSERT(ble::gap_advertise_active() == 0, "ble_gap_advertise stopped");
 
     /* Discover テスト (2秒スキャン) */
     s_ble_scan_received = false;
-    ble_gap_discoveryParams scan_params = {};
+    ble::DiscoveryParams scan_params = {};
     scan_params.interval = 160; /* 100ms */
     scan_params.window = 80;    /* 50ms */
     scan_params.is_passive = 1;
     scan_params.filter_duplicates = 0;
 
-    auto disc_result = ble_gap_discover(0, 2000, &scan_params, ble_scan_callback, nullptr);
+    auto disc_result = ble::gap_discover(0, 2000, &scan_params, ble_scan_callback, nullptr);
     LOG_I("discover: %ld", disc_result);
     TEST_ASSERT(disc_result == 0, "ble_gap_discover");
 
@@ -288,7 +294,7 @@ static void test_beacon() {
 
     auto init_result = beacon::init(nullptr);
     LOG_I("beacon::init: %ld", init_result);
-    /* NOTE: ble_init() は既に呼ばれているので -EALREADY の可能性あり */
+    /* NOTE: ble::init() は既に呼ばれているので -EALREADY の可能性あり */
     TEST_ASSERT(init_result == 0 || init_result == -11, "beacon::init");
 
     auto start_result = beacon::start();
@@ -322,10 +328,10 @@ static void custom_cmd_handler(int32_t argc, const char *const *argv) {
     (void)argc;
     (void)argv;
     s_custom_cmd_called = true;
-    shell_puts("custom command executed\r\n");
+    shell::puts("custom command executed\r\n");
 }
 
-static const ShellCommand s_test_commands[] = {
+static const shell::Command s_test_commands[] = {
     {"itest", "run integration test custom command", custom_cmd_handler},
 };
 
@@ -338,15 +344,15 @@ static void test_shell() {
     LOG_I("beacon commands: %lu", static_cast<uint32_t>(beacon_cmd_count));
     TEST_ASSERT(beacon_cmd_count > 0, "beacon shell commands exist");
 
-    /* NOTE: shell_init は1回だけ呼ぶ。後述のshellタスクで利用 */
+    /* NOTE: shell::init は1回だけ呼ぶ。後述のshellタスクで利用 */
 
     /* feed_char でコマンドディスパッチテスト */
     s_custom_cmd_called = false;
     const char cmd[] = "itest\r";
     for (size_t i = 0; i < sizeof(cmd) - 1; i++) {
-        shell_feed_char(cmd[i]);
+        shell::feed_char(cmd[i]);
     }
-    TEST_ASSERT(s_custom_cmd_called, "shell_feed_char dispatches");
+    TEST_ASSERT(s_custom_cmd_called, "shell::feed_char dispatches");
 }
 
 /* ==================================================================
@@ -358,7 +364,7 @@ static void shell_task(INT stacd, void *exinf) {
     (void)exinf;
 
     for (;;) {
-        shell_poll();
+        shell::poll();
         tk_dly_tsk(10);
     }
 }
@@ -394,7 +400,7 @@ static void main_task(INT stacd, void *exinf) {
     test_beacon();
 
     /* Shell 初期化 (beacon + itest コマンド) */
-    shell_init(s_test_commands, sizeof(s_test_commands) / sizeof(s_test_commands[0]));
+    shell::init(s_uart, s_test_commands, sizeof(s_test_commands) / sizeof(s_test_commands[0]));
     test_shell();
 
     /* --- 結果サマリ --- */
@@ -438,7 +444,8 @@ extern "C" int usermain(void) {
 
 static int app_main() {
     /* UART 初期化 */
-    uart_init(nullptr);
+    s_uart.init();
+    LogInit(LOG_LEVEL_DEBUG, s_uart);
 
     /* メインタスク生成・起動 */
     auto id = tk_cre_tsk(&s_ctsk_main);
