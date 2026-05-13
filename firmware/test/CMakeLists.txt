@@ -22,10 +22,6 @@ include(Catch)
 
 # ===== コンポーネントライブラリ =====
 
-# Stub log library for Linux test builds (no-op macros)
-add_library(log INTERFACE)
-target_include_directories(log INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/stubs/log)
-
 # Stub ble library for Linux test builds (beacon depends on ble headers)
 add_library(ble INTERFACE)
 target_include_directories(ble INTERFACE
@@ -37,12 +33,13 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/signal
                  ${CMAKE_BINARY_DIR}/lib/signal)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/template
                  ${CMAKE_BINARY_DIR}/lib/template)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/io
+                 ${CMAKE_BINARY_DIR}/lib/io)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/flash_fs
                  ${CMAKE_BINARY_DIR}/lib/flash_fs)
-
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/shell
                  ${CMAKE_BINARY_DIR}/lib/shell)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/beacon
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../apps/main/beacon
                  ${CMAKE_BINARY_DIR}/lib/beacon)
 
 # ===== テスト実行ファイル =====
@@ -86,43 +83,31 @@ add_executable(shell_test
     ${CMAKE_CURRENT_SOURCE_DIR}/../components/shell/test/linux/mock_uart.cpp
 )
 target_link_libraries(shell_test PRIVATE shell flash_fs Catch2::Catch2WithMain)
-target_include_directories(shell_test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/drivers/uart/include
-)
 catch_discover_tests(shell_test TEST_PREFIX "[shell] ")
 
 # --- flash_log (header-only, flash_fs 依存) ---
 add_executable(flash_log_test
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/log/test/linux/test_flash_log.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/flash_fs/test/linux/test_flash_log.cpp
 )
 target_link_libraries(flash_log_test PRIVATE flash_fs Catch2::Catch2WithMain)
-target_include_directories(flash_log_test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/log/include
-)
 catch_discover_tests(flash_log_test TEST_PREFIX "[flash_log] ")
 
 # --- log_format (log_vformat テスト) ---
 add_executable(log_format_test
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/log/test/linux/test_log_format.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/log/src/log.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/io/test/linux/test_log_format.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../components/shell/test/linux/mock_uart.cpp
 )
-target_link_libraries(log_format_test PRIVATE Catch2::Catch2WithMain)
-target_include_directories(log_format_test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/log/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/drivers/uart/include
-)
+target_link_libraries(log_format_test PRIVATE io Catch2::Catch2WithMain)
 catch_discover_tests(log_format_test TEST_PREFIX "[log_format] ")
 
 # --- beacon ---
 add_executable(beacon_test
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/beacon/test/linux/test_beacon.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/beacon/test/linux/mock_ble.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../apps/main/beacon/test/linux/test_beacon.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../apps/main/beacon/test/linux/mock_ble.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../components/shell/test/linux/mock_uart.cpp
 )
 target_link_libraries(beacon_test PRIVATE beacon shell flash_fs Catch2::Catch2WithMain)
 target_include_directories(beacon_test PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../components/ble/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/drivers/uart/include
 )
 catch_discover_tests(beacon_test TEST_PREFIX "[beacon] ")

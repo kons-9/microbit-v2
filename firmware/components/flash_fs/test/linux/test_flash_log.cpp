@@ -18,7 +18,7 @@ uint16_t get_uptime_ms16() {
 struct FlashLogFixture {
     FlashLogFixture() {
         flash_fs_arch_test_reset();
-        flash_fs_init();
+        flash_fs::init();
         s_mockUptime = 0;
     }
 };
@@ -37,7 +37,7 @@ TEST_CASE_METHOD(FlashLogFixture, "Write EventEntry and read back raw", "[flash_
 
     // Read raw bytes from flash
     uint8_t buf[64];
-    size_t n = flash_fs_read(FLASH_FS_FILE_LOG, 0, buf, sizeof(buf));
+    size_t n = flash_fs::read(flash_fs::FILE_LOG, 0, buf, sizeof(buf));
     REQUIRE(n >= sizeof(flash_log::RecordHeader) + sizeof(flash_log::EventEntry));
 
     // Parse header
@@ -66,7 +66,7 @@ TEST_CASE_METHOD(FlashLogFixture, "Write CrashEntry", "[flash_log]") {
     REQUIRE(flash_log::write(crash));
 
     uint8_t buf[128];
-    size_t n = flash_fs_read(FLASH_FS_FILE_LOG, 0, buf, sizeof(buf));
+    size_t n = flash_fs::read(flash_fs::FILE_LOG, 0, buf, sizeof(buf));
     REQUIRE(n >= sizeof(flash_log::RecordHeader) + sizeof(flash_log::CrashEntry));
 
     flash_log::RecordHeader hdr;
@@ -90,7 +90,7 @@ TEST_CASE_METHOD(FlashLogFixture, "Write BleEntry", "[flash_log]") {
     REQUIRE(flash_log::write(ble));
 
     uint8_t buf[32];
-    size_t n = flash_fs_read(FLASH_FS_FILE_LOG, 0, buf, sizeof(buf));
+    size_t n = flash_fs::read(flash_fs::FILE_LOG, 0, buf, sizeof(buf));
     REQUIRE(n >= sizeof(flash_log::RecordHeader) + sizeof(flash_log::BleEntry));
 
     flash_log::RecordHeader hdr;
@@ -122,7 +122,7 @@ TEST_CASE_METHOD(FlashLogFixture, "Multiple writes accumulate", "[flash_log]") {
     constexpr size_t aligned_size = (record_size + 3) & ~3u;
 
     uint8_t buf[64];
-    size_t n = flash_fs_read(FLASH_FS_FILE_LOG, aligned_size, buf, sizeof(buf));
+    size_t n = flash_fs::read(flash_fs::FILE_LOG, aligned_size, buf, sizeof(buf));
     REQUIRE(n >= sizeof(flash_log::RecordHeader) + sizeof(flash_log::EventEntry));
 
     flash_log::RecordHeader hdr2;

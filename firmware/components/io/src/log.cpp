@@ -4,7 +4,7 @@
  */
 
 #include "log.h"
-#include "uart.h"
+#include "io_stream.h"
 
 #include <cstdarg>
 
@@ -13,6 +13,7 @@
 /* ------------------------------------------------------------------ */
 
 static LogLevel s_max_level = LOG_LEVEL_INFO;
+static io::Stream *s_stream = nullptr;
 
 /* ------------------------------------------------------------------ */
 /* レベル文字列テーブル                                                */
@@ -30,12 +31,16 @@ static const char *const s_level_tags[] = {
 /* ------------------------------------------------------------------ */
 
 static inline void put_char(char c) {
-    uart_write((const uint8_t *)&c, 1);
+    if (s_stream != nullptr) {
+        s_stream->write(reinterpret_cast<const uint8_t *>(&c), 1);
+    }
 }
 
 static inline void put_str(const char *s) {
     if (s == NULL) {
-        uart_write((const uint8_t *)"(null)", 6);
+        if (s_stream != nullptr) {
+            s_stream->write(reinterpret_cast<const uint8_t *>("(null)"), 6);
+        }
         return;
     }
     while (*s) {
@@ -181,10 +186,9 @@ static void log_vformat(const char *fmt, va_list ap) {
 /* 公開 API                                                            */
 /* ------------------------------------------------------------------ */
 
-void LogInit(LogLevel max_level) {
+void LogInit(LogLevel max_level, io::Stream &stream) {
     s_max_level = max_level;
-    UARTConfig cfg = {0};
-    uart_init(&cfg);
+    s_stream = &stream;
 }
 
 void LogSetLevel(LogLevel max_level) {

@@ -28,6 +28,8 @@
 #include <cstdint>
 #include <cstddef>
 
+namespace io { class Stream; }
+
 /* ------------------------------------------------------------------ */
 /* ログレベル定義                                                      */
 /* ------------------------------------------------------------------ */
@@ -46,10 +48,9 @@ enum LogLevel {
 /**
  * @brief ログモジュールを初期化する
  * @param max_level このレベル以下のログのみ出力する
- *
- * 内部で uart_init を呼ぶ。UART未初期化の状態で呼んでよい。
+ * @param stream    出力先ストリーム (UART 等)
  */
-void LogInit(LogLevel max_level);
+void LogInit(LogLevel max_level, io::Stream &stream);
 
 /**
  * @brief 実行時にログレベルを変更する

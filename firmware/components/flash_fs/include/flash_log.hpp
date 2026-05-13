@@ -82,7 +82,7 @@ inline bool write(const T &entry) {
     __builtin_memcpy(buf, &hdr, sizeof(hdr));
     __builtin_memcpy(buf + sizeof(hdr), &entry, sizeof(T));
 
-    return flash_fs_append(FLASH_FS_FILE_LOG, buf, sizeof(hdr) + sizeof(T));
+    return flash_fs::append(flash_fs::FILE_LOG, buf, sizeof(hdr) + sizeof(T));
 }
 
 /* ================================================================== */
