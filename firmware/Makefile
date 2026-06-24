@@ -14,12 +14,14 @@ UPDATER_BIN := updater/apps/updater/app_updater.elf
 FACTORY_TEST_BIN := factory-test/apps/factory-test/app_main.elf
 SAMPLE_BIN := sample/apps/sample/app_main.elf
 INTEGRATION_TEST_BIN := integration-test/apps/integration-test/app_main.elf
+BLE_TEST_BIN := ble-test/apps/ble-test/app_main.elf
 
 MAIN:=build/$(BUILD_TYPE)/$(MAIN_BIN)
 UPDATER:=build/$(BUILD_TYPE)/$(UPDATER_BIN)
 FACTORY_TEST:=build/$(BUILD_TYPE)/$(FACTORY_TEST_BIN)
 SAMPLE:=build/$(BUILD_TYPE)/$(SAMPLE_BIN)
 INTEGRATION_TEST:=build/$(BUILD_TYPE)/$(INTEGRATION_TEST_BIN)
+BLE_TEST:=build/$(BUILD_TYPE)/$(BLE_TEST_BIN)
 
 # 外部から追加コンパイルフラグを渡す (e.g. make EXTRA_C_FLAGS="-DDEBUG_CRASH -O0")
 EXTRA_C_FLAGS ?=
@@ -33,7 +35,7 @@ ifneq ($(EXTRA_CXX_FLAGS),)
   CMAKE_EXTRA_ARGS += -DEXTRA_CXX_FLAGS="$(EXTRA_CXX_FLAGS)"
 endif
 
-.PHONY: all build build-updater build-factory-test build-sample build-integration-test clean erase-flash flash flash-updater flash-sample flash-integration-test format $(MAIN) $(UPDATER) $(FACTORY_TEST) $(SAMPLE) $(INTEGRATION_TEST)
+.PHONY: all build build-updater build-factory-test build-sample build-integration-test build-ble-test clean erase-flash flash flash-updater flash-sample flash-integration-test flash-ble-test format $(MAIN) $(UPDATER) $(FACTORY_TEST) $(SAMPLE) $(INTEGRATION_TEST) $(BLE_TEST)
 
 all: flash flash-updater
 
@@ -49,6 +51,8 @@ build-factory-test: $(FACTORY_TEST)
 build-sample: $(SAMPLE)
 
 build-integration-test: $(INTEGRATION_TEST)
+
+build-ble-test: $(BLE_TEST)
 
 clean:
 	rm -rf build
@@ -86,6 +90,10 @@ flash-integration-test: build-integration-test venv $(SOFTDEVICE_HEX)
 	. venv/bin/activate
 	pyocd flash -e chip $(SOFTDEVICE_HEX) $(INTEGRATION_TEST)
 
+flash-ble-test: build-ble-test venv $(SOFTDEVICE_HEX)
+	. venv/bin/activate
+	pyocd flash -e chip $(SOFTDEVICE_HEX) $(BLE_TEST)
+
 $(MAIN):
 	cmake -B build/$(BUILD_TYPE)/main -DAPP_TARGET=main -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/main
@@ -105,6 +113,10 @@ $(SAMPLE):
 $(INTEGRATION_TEST):
 	cmake -B build/$(BUILD_TYPE)/integration-test -DAPP_TARGET=integration-test $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/integration-test
+
+$(BLE_TEST):
+	cmake -B build/$(BUILD_TYPE)/ble-test -DAPP_TARGET=ble-test $(CMAKE_EXTRA_ARGS)
+	cmake --build build/$(BUILD_TYPE)/ble-test
 
 # ======== Unit Tests ========
 TEST_BUILD_DIR := test/build
