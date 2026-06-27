@@ -235,15 +235,9 @@ static void test_ble() {
 
     /* Advertise テスト */
     const uint8_t ad_data[] = {
-        0x02,
-        0x01,
-        0x06, /* Flags: LE General Discoverable */
-        0x05,
-        0xFF,
-        0xFF,
-        0xFF, /* Manufacturer Specific */
-        0xAA,
-        0xBB,
+        0x02, 0x01, 0x06, /* Flags: LE General Discoverable */
+        0x11, 0x09, 'i',  'n', 't', 'e', 'g', 'r', 'a',
+        't',  'i',  'o',  'n', ' ', 't', 'e', 's', 't', /* Complete Local Name */
     };
     auto set_result = ble::gap_advertise_set_data(ad_data, sizeof(ad_data));
     TEST_ASSERT(set_result == 0, "ble::gap_advertise_set_data");
