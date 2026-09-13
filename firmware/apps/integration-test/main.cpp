@@ -3,7 +3,7 @@
  * @brief 非ドライバコンポーネント統合テスト
  *
  * ドライバ層が正常に動作することを前提として、
- * ble, crash, flash_fs, shell, signal, beacon, sysconfig の
+ * ble, crash, flash_fs, shell, beacon, sysconfig の
  * 各コンポーネントを実機上でテストする。
  *
  * テスト結果は UART (LOG) 経由で出力される。
@@ -17,15 +17,14 @@
 #define LOG_TAG "ITEST"
 #include "log.h"
 
-#include <tk/tkernel.h>
 #include <tm/tmonitor.h>
+#include <utkernel/task>
 
 #include "beacon.h"
 #include "ble.h"
 #include "crash_info.h"
 #include "flash_fs.h"
 #include "shell.h"
-#include "signal_proc.h"
 #include "sysconfig.h"
 #include "uart.h"
 
@@ -101,49 +100,6 @@ static void test_sysconfig() {
 }
 
 /* ==================================================================
- * Signal テスト
- * ================================================================== */
-
-static void test_signal() {
-    LOG_I("=== Signal Test ===");
-
-    /* EMA フィルタ */
-    signal::Ema ema(0.5f);
-    TEST_ASSERT(!ema.primed(), "ema: not primed initially");
-
-    ema.update(10.0f);
-    TEST_ASSERT(ema.primed(), "ema: primed after first sample");
-
-    float val = ema.update(20.0f);
-    LOG_I("ema value after [10, 20]: %ld/100", static_cast<int32_t>(val * 100));
-    /* EMA(0.5): first=10, second=10*0.5+20*0.5=15 */
-    TEST_ASSERT(val > 14.0f && val < 16.0f, "ema: value ~15.0");
-
-    ema.reset();
-    TEST_ASSERT(!ema.primed(), "ema: reset clears primed");
-
-    /* RSSI Accumulator */
-    signal::RssiAccum accum(4);
-    TEST_ASSERT(accum.capacity() == 4, "accum: capacity == 4");
-    TEST_ASSERT(accum.count() == 0, "accum: initial count == 0");
-    TEST_ASSERT(!accum.full(), "accum: not full initially");
-
-    accum.add(-40);
-    accum.add(-50);
-    accum.add(-60);
-    bool filled = accum.add(-50);
-    TEST_ASSERT(filled, "accum: full after 4 samples");
-    TEST_ASSERT(accum.full(), "accum: full() == true");
-
-    auto avg = accum.average();
-    LOG_I("rssi avg: %ld dBm", static_cast<int32_t>(avg));
-    TEST_ASSERT(avg == -50, "accum: average == -50");
-
-    accum.reset();
-    TEST_ASSERT(accum.count() == 0, "accum: reset clears count");
-}
-
-/* ==================================================================
  * Crash Info テスト
  * ================================================================== */
 
@@ -179,22 +135,22 @@ static void test_flash_fs() {
 
     /* ファイル名 → ID 変換 */
     auto log_name = flash_fs::get_name(flash_fs::FILE_LOG);
-    LOG_I("file[0] name: %s", log_name ? log_name : "(null)");
-    TEST_ASSERT(log_name != nullptr, "flash_fs::get_name(LOG)");
+    LOG_I("file[0] name: %s", log_name ? *log_name : "(null)");
+    TEST_ASSERT(log_name.has_value(), "flash_fs::get_name(LOG)");
 
     /* ファイル情報取得 */
     flash_fs::FileInfo file_info;
-    bool info_ok = flash_fs::get_info(flash_fs::FILE_SETTINGS, &file_info);
+    auto info_result = flash_fs::get_info(flash_fs::FILE_SETTINGS, &file_info);
     LOG_I("settings: mode=%lu, capacity=%lu, used=%lu",
           static_cast<uint32_t>(file_info.mode),
           file_info.capacity,
           file_info.used);
-    TEST_ASSERT(info_ok, "flash_fs::get_info(SETTINGS)");
+    TEST_ASSERT(info_result.has_value(), "flash_fs::get_info(SETTINGS)");
 
     /* Block write / read (SETTINGS ファイル) */
     const uint32_t test_val = 0xDEADBEEF;
-    bool write_ok = flash_fs::block_write(flash_fs::FILE_SETTINGS, 0, &test_val, sizeof(test_val));
-    TEST_ASSERT(write_ok, "flash_fs_block_write");
+    auto write_result = flash_fs::block_write(flash_fs::FILE_SETTINGS, 0, &test_val, sizeof(test_val));
+    TEST_ASSERT(write_result.has_value(), "flash_fs_block_write");
 
     uint32_t read_val = 0;
     auto read_sz = flash_fs::block_read(flash_fs::FILE_SETTINGS, 0, &read_val, sizeof(read_val));
@@ -204,8 +160,8 @@ static void test_flash_fs() {
     /* Stream append / read (LOG ファイル) */
     flash_fs::erase(flash_fs::FILE_LOG);
     const char msg[] = "hello";
-    bool append_ok = flash_fs::append(flash_fs::FILE_LOG, msg, sizeof(msg));
-    TEST_ASSERT(append_ok, "flash_fs_append");
+    auto append_result = flash_fs::append(flash_fs::FILE_LOG, msg, sizeof(msg));
+    TEST_ASSERT(append_result.has_value(), "flash_fs_append");
 
     char read_buf[16] = {};
     auto stream_sz = flash_fs::read(flash_fs::FILE_LOG, 0, read_buf, sizeof(read_buf));
@@ -269,7 +225,7 @@ static void test_ble() {
     TEST_ASSERT(disc_result == 0, "ble_gap_discover");
 
     /* 2秒待って結果確認 */
-    tk_dly_tsk(2500);
+    utkernel::task::sleep_for(2500);
 
     if (s_ble_scan_received) {
         LOG_I("BLE device found");
@@ -307,7 +263,7 @@ static void test_beacon() {
     TEST_ASSERT(beacon::get_interval() == 500, "beacon interval == 500");
 
     /* 1秒アドバタイズ後停止 */
-    tk_dly_tsk(1000);
+    utkernel::task::sleep_for(1000);
     beacon::stop();
     TEST_ASSERT(beacon::is_active() == 0, "beacon::stop");
 }
@@ -353,32 +309,22 @@ static void test_shell() {
  * Shell Task (対話テスト用)
  * ================================================================== */
 
-static void shell_task(INT stacd, void *exinf) {
-    (void)stacd;
-    (void)exinf;
+static utkernel::task s_shell_task;
+static utkernel::task s_main_task;
+
+static void shell_task(void *) {
 
     for (;;) {
         shell::poll();
-        tk_dly_tsk(10);
+        utkernel::task::sleep_for(10);
     }
 }
-
-static const T_CTSK s_ctsk_shell = {
-    0,
-    (TA_HLNG | TA_RNG3),
-    reinterpret_cast<FP>(&shell_task),
-    10,   /* 優先度 */
-    2048, /* スタックサイズ */
-    0,
-};
 
 /* ==================================================================
  * メインタスク
  * ================================================================== */
 
-static void main_task(INT stacd, void *exinf) {
-    (void)stacd;
-    (void)exinf;
+static void main_task(void *) {
 
     LOG_I("========================================");
     LOG_I("  Integration Test Start");
@@ -387,7 +333,6 @@ static void main_task(INT stacd, void *exinf) {
     /* --- 自動テスト --- */
     test_uart_rx();
     test_sysconfig();
-    test_signal();
     test_crash();
     test_flash_fs();
     test_ble();
@@ -410,21 +355,13 @@ static void main_task(INT stacd, void *exinf) {
 
     /* Shell タスク起動 (対話テスト用) */
     LOG_I("Shell task starting... (type 'help' for commands)");
-    auto shell_id = tk_cre_tsk(&s_ctsk_shell);
-    tk_sta_tsk(shell_id, 0);
-
-    /* メインタスクは終了 */
-    tk_ext_tsk();
+    utkernel::task::config shell_config;
+    shell_config.priority = 10;
+    shell_config.stack_size = 2048;
+    if (!s_shell_task.create(shell_task, shell_config) || !s_shell_task.start()) {
+        LOG_E("shell task create/start failed");
+    }
 }
-
-static const T_CTSK s_ctsk_main = {
-    0,
-    (TA_HLNG | TA_RNG3),
-    reinterpret_cast<FP>(&main_task),
-    8,    /* 優先度 (shell より高い) */
-    4096, /* スタックサイズ */
-    0,
-};
 
 /* ==================================================================
  * Entry Point
@@ -442,10 +379,15 @@ static int app_main() {
     LogInit(LOG_LEVEL_DEBUG, s_uart);
 
     /* メインタスク生成・起動 */
-    auto id = tk_cre_tsk(&s_ctsk_main);
-    tk_sta_tsk(id, 0);
+    utkernel::task::config main_config;
+    main_config.priority = 8;
+    main_config.stack_size = 4096;
+    if (!s_main_task.create(main_task, main_config) || !s_main_task.start()) {
+        LOG_E("main task create/start failed");
+        return -1;
+    }
 
-    tk_slp_tsk(TMO_FEVR);
+    utkernel::task::sleep_forever();
 
     return 0;
 }

@@ -6,6 +6,8 @@
 #include "uart.h"
 #include "arch/uart_arch.h"
 
+#include "log.h"
+
 #include <cstring>
 
 namespace drivers {
@@ -25,6 +27,7 @@ int32_t Uart::read(uint8_t *buf, size_t buf_len, uint32_t timeout_ms) {
     if (buf == nullptr || buf_len == 0) {
         return 0;
     }
+    LOG_I("uart read: buf_len=%lu, timeout=%lu ms", static_cast<uint32_t>(buf_len), timeout_ms);
     return uart_arch_read(buf, buf_len, timeout_ms);
 }
 

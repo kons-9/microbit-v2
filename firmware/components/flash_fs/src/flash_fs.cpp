@@ -225,30 +225,36 @@ int32_t init(void) {
     return 0;
 }
 
-const char *get_name(FileId id) {
+library::Option<const char *> get_name(FileId id) {
     if (id >= FILE_COUNT) {
-        return nullptr;
+        return library::Option<const char *>::none();
     }
-    return FILE_TABLE[id].name;
+    return library::Option<const char *>::some(FILE_TABLE[id].name);
 }
 
-FileId find_by_name(const char *name) {
+library::Option<FileId> find_by_name(const char *name) {
+    if (name == nullptr) {
+        return library::Option<FileId>::none();
+    }
     for (uint8_t i = 0; i < FILE_COUNT; ++i) {
         if (std::strcmp(FILE_TABLE[i].name, name) == 0) {
-            return static_cast<FileId>(i);
+            return library::Option<FileId>::some(static_cast<FileId>(i));
         }
     }
-    return FILE_COUNT;
+    return library::Option<FileId>::none();
 }
 
 /* --- Stream --- */
 
-bool append(FileId id, const void *data, size_t size) {
-    if (id >= FILE_COUNT || FILE_TABLE[id].mode != MODE_STREAM) {
-        return false;
+library::Result<void, Error> append(FileId id, const void *data, size_t size) {
+    if (id >= FILE_COUNT) {
+        return library::Result<void, Error>::err(Error::InvalidFile);
+    }
+    if (FILE_TABLE[id].mode != MODE_STREAM) {
+        return library::Result<void, Error>::err(Error::WrongMode);
     }
     if (size == 0 || size > (PAGE_SIZE - PAGE_HEADER_SIZE)) {
-        return false;
+        return library::Result<void, Error>::err(Error::TooLarge);
     }
 
     auto &ss = s_state.stream[id];
@@ -266,7 +272,7 @@ bool append(FileId id, const void *data, size_t size) {
     // 4バイトアライン
     ss.write_offset = (ss.write_offset + 3) & ~3u;
 
-    return true;
+    return library::Result<void, Error>::ok();
 }
 
 size_t read(FileId id, uint32_t offset, void *buf, size_t size) {
@@ -320,20 +326,23 @@ size_t read(FileId id, uint32_t offset, void *buf, size_t size) {
 
 /* --- Block --- */
 
-bool block_write(FileId id, uint32_t offset, const void *data, size_t size) {
-    if (id >= FILE_COUNT || FILE_TABLE[id].mode != MODE_BLOCK) {
-        return false;
+library::Result<void, Error> block_write(FileId id, uint32_t offset, const void *data, size_t size) {
+    if (id >= FILE_COUNT) {
+        return library::Result<void, Error>::err(Error::InvalidFile);
+    }
+    if (FILE_TABLE[id].mode != MODE_BLOCK) {
+        return library::Result<void, Error>::err(Error::WrongMode);
     }
 
     const auto &entry = FILE_TABLE[id];
     uint32_t capacity = entry.page_count * PAGE_SIZE;
     if (offset + size > capacity) {
-        return false;
+        return library::Result<void, Error>::err(Error::OutOfBounds);
     }
 
     uint32_t addr = get_file_base_address(id) + offset;
     flash_fs_arch_write(addr, data, size);
-    return true;
+    return library::Result<void, Error>::ok();
 }
 
 size_t block_read(FileId id, uint32_t offset, void *buf, size_t size) {
@@ -383,9 +392,12 @@ void erase(FileId id) {
     }
 }
 
-bool get_info(FileId id, FileInfo *info) {
-    if (id >= FILE_COUNT || info == nullptr) {
-        return false;
+library::Result<void, Error> get_info(FileId id, FileInfo *info) {
+    if (id >= FILE_COUNT) {
+        return library::Result<void, Error>::err(Error::InvalidFile);
+    }
+    if (info == nullptr) {
+        return library::Result<void, Error>::err(Error::InvalidArgument);
     }
 
     const auto &entry = FILE_TABLE[id];
@@ -411,6 +423,6 @@ bool get_info(FileId id, FileInfo *info) {
         info->used = info->capacity;
     }
 
-    return true;
+    return library::Result<void, Error>::ok();
 }
 }  // namespace flash_fs

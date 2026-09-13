@@ -1,8 +1,18 @@
 # Drivers コンポーネント
 
-micro:bit v2.2 (nRF52833) の各種ハードウェアドライバ。
+micro:bit v2.2 (nRF52833) の各種ハードウェアドライバと BLE GAP 層。
 
-すべてのドライバは `namespace drivers` 内にクラスとして定義されている。
+ハードウェアドライバは `namespace drivers` 内にクラスとして定義され、BLE API は `namespace ble` として提供される。
+
+---
+
+## BLE GAP
+
+nRF52833 の RADIO ペリフェラルを直接制御する BLE 層。SoftDevice は使用せず、スキャンと Advertising を提供する。
+
+- 公開 API: `include/ble.h`
+- 共通ロジック: `src/ble.cpp`
+- micro:bit 実装: `src/arch/microbit/ble_microbit.cpp`
 
 ---
 

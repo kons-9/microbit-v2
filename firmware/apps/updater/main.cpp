@@ -7,7 +7,7 @@
  * アプリケーションスロットに書き込む。
  */
 
-#include <tk/tkernel.h>
+#include <utkernel/task>
 #if USE_TMONITOR
 #include <tm/tmonitor.h>
 #endif
@@ -19,9 +19,7 @@
  * Updater Task
  * ================================================================== */
 
-static void updater_task(INT stacd, void *exinf) {
-    (void)stacd;
-    (void)exinf;
+static void updater_task(void *) {
 
     auto err = ble::init();
     if (err != 0) {
@@ -36,28 +34,23 @@ static void updater_task(INT stacd, void *exinf) {
     ota::switch_mode(SYSCONFIG_BOOT_APP);
 
 fail:
-    tk_slp_tsk(TMO_FEVR);
+    utkernel::task::sleep_forever();
 }
 
 /* ==================================================================
  * Entry Point
  * ================================================================== */
 
-static ID s_updaterTaskId;
+static utkernel::task s_updater_task;
 
-extern "C" EXPORT INT usermain(void) {
-    T_CTSK ctsk = {};
-    ctsk.tskatr = TA_HLNG | TA_RNG3;
-    ctsk.task = reinterpret_cast<FP>(updater_task);
-    ctsk.stksz = 2048;
-    ctsk.itskpri = 10;
-
-    s_updaterTaskId = tk_cre_tsk(&ctsk);
-    if (s_updaterTaskId < E_OK) {
+extern "C" int usermain(void) {
+    utkernel::task::config task_config;
+    task_config.priority = 10;
+    task_config.stack_size = 2048;
+    if (!s_updater_task.create(updater_task, task_config) || !s_updater_task.start()) {
         return 1;
     }
 
-    tk_sta_tsk(s_updaterTaskId, 0);
-    tk_slp_tsk(TMO_FEVR);
+    utkernel::task::sleep_forever();
     return 0;
 }

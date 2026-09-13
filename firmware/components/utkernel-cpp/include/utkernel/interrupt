@@ -1,0 +1,45 @@
+#pragma once
+
+#include <cstdint>
+
+namespace utkernel {
+
+/**
+ * RAII wrapper for a μT-Kernel interrupt handler definition.
+ *
+ * The handler remains owned by the Interrupt object and is undefined when the
+ * object is destroyed. Kernel-specific T_DINT/FP types stay inside the
+ * architecture implementation.
+ */
+class interrupt {
+public:
+    using handler_t = void (*)(uint32_t);
+
+    interrupt() = default;
+    interrupt(uint32_t intno, handler_t handler, bool high_level = true) { define(intno, handler, high_level); }
+    ~interrupt() { reset(); }
+
+    interrupt(const interrupt &) = delete;
+    interrupt &operator=(const interrupt &) = delete;
+
+    bool define(uint32_t intno, handler_t handler, bool high_level = true);
+    bool enable(uint32_t priority);
+    void disable();
+    void reset();
+    bool defined() const { return m_defined; }
+
+private:
+    uint32_t m_intno = 0;
+    bool m_defined = false;
+    bool m_enabled = false;
+};
+
+}  // namespace utkernel
+
+#if defined(UTKERNEL_ARCH_linux)
+#include "arch/linux/interrupt_impl.hpp"
+#elif defined(UTKERNEL_ARCH_microbit)
+#include "arch/microbit/interrupt_impl.hpp"
+#else
+#error "UTKERNEL_ARCH not defined"
+#endif

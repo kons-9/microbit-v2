@@ -15,7 +15,7 @@ target_link_libraries(beacon
     PUBLIC
         shell
     PRIVATE
-        ble
+        drivers
         io
 )
 

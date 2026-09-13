@@ -18,17 +18,17 @@ struct FsFixture {
 /* ================================================================== */
 
 TEST_CASE_METHOD(FsFixture, "flash_fs_get_name returns correct names", "[flash_fs]") {
-    REQUIRE(std::strcmp(flash_fs::get_name(flash_fs::FILE_LOG), "log") == 0);
-    REQUIRE(std::strcmp(flash_fs::get_name(flash_fs::FILE_SETTINGS), "settings") == 0);
-    REQUIRE(std::strcmp(flash_fs::get_name(flash_fs::FILE_CALIB), "calib") == 0);
-    REQUIRE(flash_fs::get_name(flash_fs::FILE_COUNT) == nullptr);
+    REQUIRE(std::strcmp(*flash_fs::get_name(flash_fs::FILE_LOG), "log") == 0);
+    REQUIRE(std::strcmp(*flash_fs::get_name(flash_fs::FILE_SETTINGS), "settings") == 0);
+    REQUIRE(std::strcmp(*flash_fs::get_name(flash_fs::FILE_CALIB), "calib") == 0);
+    REQUIRE_FALSE(flash_fs::get_name(flash_fs::FILE_COUNT).has_value());
 }
 
 TEST_CASE_METHOD(FsFixture, "flash_fs_find_by_name resolves names", "[flash_fs]") {
-    REQUIRE(flash_fs::find_by_name("log") == flash_fs::FILE_LOG);
-    REQUIRE(flash_fs::find_by_name("settings") == flash_fs::FILE_SETTINGS);
-    REQUIRE(flash_fs::find_by_name("calib") == flash_fs::FILE_CALIB);
-    REQUIRE(flash_fs::find_by_name("nonexist") == flash_fs::FILE_COUNT);
+    REQUIRE(*flash_fs::find_by_name("log") == flash_fs::FILE_LOG);
+    REQUIRE(*flash_fs::find_by_name("settings") == flash_fs::FILE_SETTINGS);
+    REQUIRE(*flash_fs::find_by_name("calib") == flash_fs::FILE_CALIB);
+    REQUIRE_FALSE(flash_fs::find_by_name("nonexist").has_value());
 }
 
 /* ================================================================== */

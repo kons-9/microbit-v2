@@ -5,8 +5,9 @@ add_executable(app_main.elf
 target_link_libraries(app_main.elf
     PRIVATE
         template
-        osal
+        utkernel_cpp
         io
+        font
         drivers
         nrfx
 )

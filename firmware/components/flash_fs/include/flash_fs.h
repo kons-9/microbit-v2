@@ -15,8 +15,18 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <option.h>
+#include <result.h>
 
 namespace flash_fs {
+
+enum class Error : uint8_t {
+    InvalidFile,
+    InvalidArgument,
+    WrongMode,
+    OutOfBounds,
+    TooLarge,
+};
 
 /* ================================================================== */
 /*  File ID                                                           */
@@ -69,13 +79,13 @@ int32_t init(void);
 /**
  * @brief FileId → 文字列名
  */
-const char *get_name(FileId id);
+library::Option<const char *> get_name(FileId id);
 
 /**
  * @brief 文字列名 → FileId
  * @return 見つからなければ FILE_COUNT
  */
-FileId find_by_name(const char *name);
+library::Option<FileId> find_by_name(const char *name);
 
 /* ================================================================== */
 /*  Stream API (Log 向け)                                             */
@@ -86,11 +96,11 @@ FileId find_by_name(const char *name);
  * @param id    ファイルID (mode == STREAM であること)
  * @param data  書き込みデータ
  * @param size  バイト数
- * @return true: 成功
+ * @return 成功、または InvalidFile / WrongMode / TooLarge
  *
  * 現在ページに入りきらない場合は次ページへ進む (ringで最古ページをerase)。
  */
-bool append(FileId id, const void *data, size_t size);
+library::Result<void, Error> append(FileId id, const void *data, size_t size);
 
 /**
  * @brief Stream ファイルを先頭から読み出す
@@ -112,9 +122,9 @@ size_t read(FileId id, uint32_t offset, void *buf, size_t size);
  * @param offset  ファイル内オフセット
  * @param data    書き込みデータ
  * @param size    バイト数
- * @return true: 成功
+ * @return 成功、または InvalidFile / WrongMode / OutOfBounds
  */
-bool block_write(FileId id, uint32_t offset, const void *data, size_t size);
+library::Result<void, Error> block_write(FileId id, uint32_t offset, const void *data, size_t size);
 
 /**
  * @brief Block ファイルからデータを読み出す
@@ -132,7 +142,8 @@ void erase(FileId id);
 
 /**
  * @brief ファイル情報を取得する
+ * @return 成功、または InvalidFile / InvalidArgument
  */
-bool get_info(FileId id, FileInfo *info);
+library::Result<void, Error> get_info(FileId id, FileInfo *info);
 
 }  // namespace flash_fs

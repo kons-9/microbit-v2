@@ -6,19 +6,19 @@ micro:bit v2.2 向けコンポーネント群。各コンポーネントは arch
 
 | コンポーネント | 説明 | テスト |
 |---|---|---|
-| `ble` | BLE GAP (scan/advertise) | - |
+| `drivers` | BLE GAP、UART、各種ハードウェアドライバ | - |
 | `flash_fs` | NOR Flash ファイルシステム (stream + block) | 13件 |
 | `shell` | UART シェル (help/ls/cat/erase) | 9件 |
 | `log` | バイナリログ (flash_log) + テキストログ | 4件 + 16件(py) |
-| `signal` | EMA フィルタ / RSSI 集約 | 6件 |
-| `osal` | RTOS 抽象化 (mutex/semaphore/task/timer) | 22件 |
 | `ota` | OTA 受信・検証・書き込み | - |
 | `crash` | HardFault ハンドラ + crash info 永続化 | - |
 | `sysconfig` | メモリマップ定数 (header-only) | - |
-| `utkernel-cpp` | μT-Kernel C ラッパーヘッダ | - |
+| `utkernel-cpp` | RAII対応のμT-Kernel C++抽象化 | 22件 |
 | `template` | 新規コンポーネントのテンプレート | 1件 |
 
 ### ドライバ (`drivers/`)
+
+BLE GAP (scan/advertise) も、RADIOのアーキテクチャ実装を含めてこのコンポーネントに統合しています。
 
 | ドライバ | チップ/ペリフェラル | インターフェース |
 |---|---|---|
@@ -38,9 +38,8 @@ micro:bit v2.2 向けコンポーネント群。各コンポーネントは arch
 cd firmware
 make test              # 全 55 件
 make test-flash_fs     # コンポーネント単位
-make test-osal
+make test-utkernel
 make test-shell
-make test-signal
 make test-flash_log
 ```
 

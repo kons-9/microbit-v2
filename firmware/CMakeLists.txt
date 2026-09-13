@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 # ==== アプリケーション選択（これだけ指定すればよい） ====
 set(APP_TARGET "main" CACHE STRING "Application target")
-set_property(CACHE APP_TARGET PROPERTY STRINGS main factory-test updater integration-test ble-test)
+set_property(CACHE APP_TARGET PROPERTY STRINGS main factory-test updater integration-test advertise-test)
 
 option(ENABLE_LOG "log enable" ON)
 

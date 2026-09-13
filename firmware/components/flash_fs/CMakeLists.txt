@@ -13,6 +13,10 @@ target_include_directories(flash_fs
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
+target_link_libraries(flash_fs
+    PUBLIC library
+)
+
 if(NOT DEFINED TARGET_ARCH)
     message(FATAL_ERROR "TARGET_ARCH not set")
 endif()

@@ -3,7 +3,7 @@
  * Linker script for the OTA updater
  *
  * Placed in the Updater slot: 0x0006E000 - 0x00077FFF (40 KB)
- * RAM: after SoftDevice reservation
+ * SoftDevice is not used.
  */
 
 INCLUDE "memory_map.ld"
@@ -13,7 +13,7 @@ ENTRY(Reset_Handler)
 MEMORY
 {
   ROM (rx)  : ORIGIN = __updater_start, LENGTH = __updater_end - __updater_start
-  RAM (xrw) : ORIGIN = __softdevice_ram, LENGTH = __ram_start + __ram_size - __softdevice_ram
+  RAM (xrw) : ORIGIN = __ram_start, LENGTH = __ram_size
 }
 
 SECTIONS {
@@ -30,7 +30,7 @@ SECTIONS {
     . = ALIGN(4);
     __data_org = .;
 
-    vector __softdevice_ram (NOLOAD) : {
+    vector __ram_start (NOLOAD) : {
         __vector_start = .;
         *(.data_vector)
         __vector_end = .;

@@ -2,8 +2,8 @@
  * app.ld
  * Linker script for the main application (ble-locator)
  *
- * Placed in the Application slot: 0x00026000 - 0x0006DFFF (288 KB)
- * RAM: after SoftDevice reservation
+ * Placed in the Application slot: 0x00000000 - 0x0006DFFF (440 KB)
+ * SoftDevice is not used.
  */
 
 INCLUDE "memory_map.ld"
@@ -13,7 +13,7 @@ ENTRY(Reset_Handler)
 MEMORY
 {
   ROM (rx)  : ORIGIN = __app_slot_start, LENGTH = __app_slot_end - __app_slot_start
-  RAM (xrw) : ORIGIN = __softdevice_ram, LENGTH = __ram_start + __ram_size - __softdevice_ram
+  RAM (xrw) : ORIGIN = __ram_start, LENGTH = __ram_size
 }
 
 SECTIONS {
@@ -30,7 +30,7 @@ SECTIONS {
     . = ALIGN(4);
     __data_org = .;
 
-    vector __softdevice_ram (NOLOAD) : {
+    vector __ram_start (NOLOAD) : {
         __vector_start = .;
         *(.data_vector)
         __vector_end = .;

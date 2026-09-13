@@ -13,7 +13,7 @@ target_include_directories(ota
 
 target_link_libraries(ota
     PUBLIC  sysconfig
-    PRIVATE ble
+    PRIVATE drivers
 )
 
 if(TARGET_ARCH STREQUAL "microbit")

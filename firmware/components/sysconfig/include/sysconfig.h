@@ -77,7 +77,7 @@ inline volatile uint32_t *sysconfig_get_updater_vector_table() {
 }
 
 /**
- * App スロット先頭アドレスを取得する (0x26000)
+ * App スロット先頭アドレスを取得する (0x00000)
  * @return App スロットの物理アドレス
  */
 inline uint32_t sysconfig_get_app_slot_address() {

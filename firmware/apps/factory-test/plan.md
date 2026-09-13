@@ -166,4 +166,4 @@ TestResult test_temperature(void);
 - `button` - ボタンA/B入力 (**新規作成必要**)
 - `touch` - タッチロゴ入力 (**新規作成必要**)
 - `temperature` - 温度センサ (**新規作成必要**)
-- `osal` - タスクスリープ/タイマ (既存)
+- `utkernel-cpp` - タスクスリープ/タイマ (既存)

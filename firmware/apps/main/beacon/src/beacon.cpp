@@ -77,13 +77,16 @@ static void build_ad_data(void) {
 /* ================================================================== */
 
 static int32_t start_advertising(void) {
+    LOG_D("start_advertising: interval=%u ms, tx_power=%d", s_config.interval_ms, s_config.tx_power);
     build_ad_data();
 
+    LOG_D("gap_advertise_set_data");
     auto result = ble::gap_advertise_set_data(s_adData, s_adDataLength);
     if (result != 0) {
         return result;
     }
 
+    LOG_D("gap_advertise_start");
     ble::GapAdvertiseParams params = {};
     params.interval_min = MS_TO_BLE_UNITS(s_config.interval_ms);
     params.interval_max = MS_TO_BLE_UNITS(s_config.interval_ms);

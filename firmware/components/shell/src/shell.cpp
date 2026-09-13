@@ -102,8 +102,8 @@ static void cmd_cat(int32_t argc, const char *const *argv) {
         return;
     }
 
-    flash_fs::FileId id = flash_fs::find_by_name(argv[1]);
-    if (id == flash_fs::FILE_COUNT) {
+    auto id = flash_fs::find_by_name(argv[1]);
+    if (!id) {
         printf("Unknown file: %s\r\n", argv[1]);
         return;
     }
@@ -114,7 +114,7 @@ static void cmd_cat(int32_t argc, const char *const *argv) {
     }
 
     flash_fs::FileInfo info;
-    flash_fs::get_info(id, &info);
+    flash_fs::get_info(*id, &info);
 
     // 256バイトずつ読み出し
     uint8_t buf[256];
@@ -129,9 +129,9 @@ static void cmd_cat(int32_t argc, const char *const *argv) {
 
         size_t read_len = 0;
         if (info.mode == flash_fs::MODE_STREAM) {
-            read_len = flash_fs::read(id, offset, buf, chunk);
+            read_len = flash_fs::read(*id, offset, buf, chunk);
         } else {
-            read_len = flash_fs::block_read(id, offset, buf, chunk);
+            read_len = flash_fs::block_read(*id, offset, buf, chunk);
         }
 
         if (read_len == 0) {
@@ -165,13 +165,13 @@ static void cmd_erase(int32_t argc, const char *const *argv) {
         return;
     }
 
-    flash_fs::FileId id = flash_fs::find_by_name(argv[1]);
-    if (id == flash_fs::FILE_COUNT) {
+    auto id = flash_fs::find_by_name(argv[1]);
+    if (!id) {
         printf("Unknown file: %s\r\n", argv[1]);
         return;
     }
 
-    flash_fs::erase(id);
+    flash_fs::erase(*id);
     puts("OK\r\n");
 }
 

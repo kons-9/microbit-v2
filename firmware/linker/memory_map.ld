@@ -6,10 +6,9 @@
  * メモリレイアウトの一元管理。
  */
 
-/* ---- Flash Layout (512 KB total) ---- */
-__softdevice_end   = 0x00027000;  /* SoftDevice S140 v7.3.0: hex extends to 0x26498, next page = 0x27000 */
-__app_slot_start   = 0x00027000;  /* Application slot start (after SoftDevice page) */
-__app_slot_end     = 0x0006E000;  /* Application slot end (284 KB) */
+/* ---- Flash Layout (512 KB total, no SoftDevice) ---- */
+__app_slot_start   = 0x00000000;  /* Application slot start */
+__app_slot_end     = 0x0006E000;  /* Application slot end (440 KB) */
 __updater_start    = 0x0006E000;  /* Updater start */
 __updater_end      = 0x00078000;  /* Updater end (40 KB) */
 __bootloader_start = 0x00078000;  /* Bootloader start */
@@ -25,4 +24,3 @@ __flash_fs_calib_start    = 0x00075000;  /* Flash FS calibration / OTA staging (
 /* ---- RAM Layout (128 KB total) ---- */
 __ram_start        = 0x20000000;
 __ram_size         = 128K;
-__softdevice_ram   = 0x20002000;  /* SoftDevice RAM reservation (8 KB) */

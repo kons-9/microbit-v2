@@ -22,15 +22,8 @@ include(Catch)
 
 # ===== コンポーネントライブラリ =====
 
-# Stub ble library for Linux test builds (beacon depends on ble headers)
-add_library(ble INTERFACE)
-target_include_directories(ble INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/ble/include)
-
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/osal
-                 ${CMAKE_BINARY_DIR}/lib/osal)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/signal
-                 ${CMAKE_BINARY_DIR}/lib/signal)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/utkernel-cpp
+                 ${CMAKE_BINARY_DIR}/lib/utkernel-cpp)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/template
                  ${CMAKE_BINARY_DIR}/lib/template)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/io
@@ -39,29 +32,28 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/flash_fs
                  ${CMAKE_BINARY_DIR}/lib/flash_fs)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/shell
                  ${CMAKE_BINARY_DIR}/lib/shell)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/drivers
+                 ${CMAKE_BINARY_DIR}/lib/drivers)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/font
+                 ${CMAKE_BINARY_DIR}/lib/font)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../components/library
+                 ${CMAKE_BINARY_DIR}/lib/library)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../apps/main/beacon
                  ${CMAKE_BINARY_DIR}/lib/beacon)
 
 # ===== テスト実行ファイル =====
 
-# --- osal ---
-add_executable(osal_test
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/osal/test/linux/test_mutex.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/osal/test/linux/test_semaphore.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/osal/test/linux/test_task.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/osal/test/linux/test_eventflag.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/osal/test/linux/test_msgbuf.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/osal/test/linux/test_timer.cpp
+# --- utkernel-cpp ---
+add_executable(utkernel_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/utkernel-cpp/test/linux/test_mutex.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/utkernel-cpp/test/linux/test_semaphore.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/utkernel-cpp/test/linux/test_task.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/utkernel-cpp/test/linux/test_eventflag.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/utkernel-cpp/test/linux/test_msgbuf.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/utkernel-cpp/test/linux/test_timer.cpp
 )
-target_link_libraries(osal_test PRIVATE osal Catch2::Catch2WithMain)
-catch_discover_tests(osal_test TEST_PREFIX "[osal] ")
-
-# --- signal ---
-add_executable(signal_test
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/signal/test/linux/signal_test.cpp
-)
-target_link_libraries(signal_test PRIVATE signal Catch2::Catch2WithMain)
-catch_discover_tests(signal_test TEST_PREFIX "[signal] ")
+target_link_libraries(utkernel_test PRIVATE utkernel_cpp Catch2::Catch2WithMain)
+catch_discover_tests(utkernel_test TEST_PREFIX "[utkernel] ")
 
 # --- template ---
 add_executable(template_test
@@ -108,6 +100,20 @@ add_executable(beacon_test
 )
 target_link_libraries(beacon_test PRIVATE beacon shell flash_fs Catch2::Catch2WithMain)
 target_include_directories(beacon_test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../components/ble/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/drivers/include
 )
 catch_discover_tests(beacon_test TEST_PREFIX "[beacon] ")
+
+# --- font5x5 ---
+add_executable(font5x5_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/font/test/linux/test_font5x5.cpp
+)
+target_link_libraries(font5x5_test PRIVATE font Catch2::Catch2WithMain)
+catch_discover_tests(font5x5_test TEST_PREFIX "[font5x5] ")
+
+# --- library ---
+add_executable(library_test
+    ${CMAKE_CURRENT_SOURCE_DIR}/../components/library/test/linux/test_library.cpp
+)
+target_link_libraries(library_test PRIVATE library Catch2::Catch2WithMain)
+catch_discover_tests(library_test TEST_PREFIX "[library] ")

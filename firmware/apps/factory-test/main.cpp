@@ -9,9 +9,10 @@
 #define LOG_TAG "TEST"
 #include "log.h"
 
-#include <osal/task>
+#include <utkernel/task>
+#include <utkernel/interrupt>
 #include <led.h>
-#include <led_font.h>
+#include <font5x5.h>
 #include <speaker.h>
 #include <mic.h>
 #include <accelerometer.h>
@@ -22,9 +23,6 @@
 #include <uart.h>
 
 #include <nrf.h>
-#include <tk/tkernel.h>
-#include <tk/syslib.h>
-
 #include <cstdint>
 #include <cstring>
 
@@ -41,6 +39,7 @@ static drivers::Button s_button;
 static drivers::Touch s_touch;
 static drivers::Temperature s_temp;
 static drivers::Uart s_uart;
+static utkernel::interrupt s_led_interrupt;
 
 /* ==================================================================
  * LED scan timer (TIMER2)
@@ -49,7 +48,7 @@ static drivers::Uart s_uart;
 static constexpr uint32_t LED_SCAN_INTERVAL_US = 2000;
 static constexpr uint32_t LED_TIMER_IRQ_PRIORITY = 3;
 
-static void led_timer_isr(UINT intno) {
+static void led_timer_isr(uint32_t intno) {
     (void)intno;
     if (NRF_TIMER2->EVENTS_COMPARE[0] == 0) {
         return;
@@ -59,11 +58,8 @@ static void led_timer_isr(UINT intno) {
 }
 
 static bool led_timer_init(void) {
-    T_DINT dint;
-    dint.intatr = TA_HLNG;
-    dint.inthdr = reinterpret_cast<FP>(led_timer_isr);
-    if (auto err = tk_def_int(TIMER2_IRQn, &dint); err < E_OK) {
-        LOG_E("tk_def_int(TIMER2) failed: %ld", static_cast<int32_t>(err));
+    if (!s_led_interrupt.define(TIMER2_IRQn, led_timer_isr)) {
+        LOG_E("interrupt define TIMER2 failed");
         return false;
     }
 
@@ -76,7 +72,10 @@ static bool led_timer_init(void) {
     NRF_TIMER2->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
     NRF_TIMER2->INTENSET = TIMER_INTENSET_COMPARE0_Msk;
 
-    EnableInt(TIMER2_IRQn, LED_TIMER_IRQ_PRIORITY);
+    if (!s_led_interrupt.enable(LED_TIMER_IRQ_PRIORITY)) {
+        LOG_E("interrupt enable TIMER2 failed");
+        return false;
+    }
     NRF_TIMER2->TASKS_START = 1;
 
     LOG_D("LED timer started (TIMER2, %lu us/row)", LED_SCAN_INTERVAL_US);
@@ -105,18 +104,18 @@ static void clear_frame() {
 }
 
 static void show_char(char c) {
-    const auto *pat = led_font_get(c);
-    if (pat != nullptr) {
-        s_led.set_frame(pat);
+    auto pat = font5x5::get(c);
+    if (pat) {
+        s_led.set_frame(*pat);
     }
 }
 
 static void show_check() {
-    s_led.set_frame(LED_SYM_CHECK);
+    s_led.set_frame(font5x5::SYM_CHECK);
 }
 
 static void show_cross() {
-    s_led.set_frame(LED_SYM_CROSS);
+    s_led.set_frame(font5x5::SYM_CROSS);
 }
 
 static void show_tilt(int16_t x_mg, int16_t y_mg) {
@@ -168,23 +167,23 @@ static TestResult wait_user_judgment() {
  * ================================================================== */
 
 static TestResult test_led() {
-    s_led.set_frame(LED_SYM_FULL);
-    osal::task::sleep_for(500);
+    s_led.set_frame(font5x5::SYM_FULL);
+    utkernel::task::sleep_for(500);
 
     s_led.clear();
-    osal::task::sleep_for(500);
+    utkernel::task::sleep_for(500);
 
     for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
         clear_frame();
         s_frameBuf[r] = 0x1F;
         s_led.set_frame(s_frameBuf);
-        osal::task::sleep_for(50);
+        utkernel::task::sleep_for(50);
     }
     for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
         clear_frame();
         s_frameBuf[drivers::LED_ROWS - 1 - r] = 0x1F;
         s_led.set_frame(s_frameBuf);
-        osal::task::sleep_for(50);
+        utkernel::task::sleep_for(50);
     }
     for (int32_t c = 0; c < drivers::LED_COLS; ++c) {
         clear_frame();
@@ -192,7 +191,7 @@ static TestResult test_led() {
             s_frameBuf[r] = static_cast<uint8_t>(1U << c);
         }
         s_led.set_frame(s_frameBuf);
-        osal::task::sleep_for(50);
+        utkernel::task::sleep_for(50);
     }
     for (int32_t c = 0; c < drivers::LED_COLS; ++c) {
         clear_frame();
@@ -200,19 +199,19 @@ static TestResult test_led() {
             s_frameBuf[r] |= static_cast<uint8_t>(1U << (drivers::LED_COLS - 1 - c));
         }
         s_led.set_frame(s_frameBuf);
-        osal::task::sleep_for(50);
+        utkernel::task::sleep_for(50);
     }
     clear_frame();
     for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
         for (int32_t c = 0; c < drivers::LED_COLS; ++c) {
             s_led.set(r, c, true);
-            osal::task::sleep_for(10);
+            utkernel::task::sleep_for(10);
         }
     }
     for (int32_t r = 0; r < drivers::LED_ROWS; ++r) {
         for (int32_t c = 0; c < drivers::LED_COLS; ++c) {
             s_led.set(r, c, false);
-            osal::task::sleep_for(10);
+            utkernel::task::sleep_for(10);
         }
     }
     for (int32_t r = 0; r < 10; ++r) {
@@ -220,12 +219,12 @@ static TestResult test_led() {
             const uint8_t checker[5] = {0x15, 0x0A, 0x15, 0x0A, 0x15};
             s_led.set_frame(checker);
         }
-        osal::task::sleep_for(100);
+        utkernel::task::sleep_for(100);
         {
             const uint8_t checker[5] = {0x0A, 0x15, 0x0A, 0x15, 0x0A};
             s_led.set_frame(checker);
         }
-        osal::task::sleep_for(100);
+        utkernel::task::sleep_for(100);
     }
     clear_frame();
 
@@ -234,10 +233,10 @@ static TestResult test_led() {
 
 static TestResult test_speaker() {
     s_speaker.tone(1000);
-    osal::task::sleep_for(500);
+    utkernel::task::sleep_for(500);
 
     s_speaker.tone(2700);
-    osal::task::sleep_for(500);
+    utkernel::task::sleep_for(500);
 
     s_speaker.stop();
 
@@ -246,7 +245,7 @@ static TestResult test_speaker() {
 
 static TestResult test_microphone() {
     s_mic.enable();
-    osal::task::sleep_for(50);
+    utkernel::task::sleep_for(50);
 
     LOG_I("mic: sampling baseline...");
     uint32_t baseline = 0;
@@ -254,21 +253,21 @@ static TestResult test_microphone() {
         uint16_t sample = s_mic.read();
         LOG_D("mic: sample[%ld]=%u", i, sample);
         baseline += sample;
-        osal::task::sleep_for(6);
+        utkernel::task::sleep_for(6);
     }
     baseline /= 16;
     LOG_I("mic: baseline=%lu", baseline);
 
     LOG_I("mic: playing 2700Hz tone, sampling...");
     s_speaker.tone(2700);
-    osal::task::sleep_for(100);
+    utkernel::task::sleep_for(100);
 
     uint32_t activeLevel = 0;
     for (int32_t i = 0; i < 16; ++i) {
         uint16_t sample = s_mic.read();
         LOG_D("mic: active_sample[%ld]=%u", i, sample);
         activeLevel += sample;
-        osal::task::sleep_for(6);
+        utkernel::task::sleep_for(6);
     }
     activeLevel /= 16;
 
@@ -294,7 +293,7 @@ static TestResult test_accelerometer() {
         auto d = s_accel.read();
         LOG_I("accel: x=%d y=%d z=%d", d.m_x, d.m_y, d.m_z);
         show_tilt(d.m_x, d.m_y);
-        osal::task::sleep_for(100);
+        utkernel::task::sleep_for(100);
     }
 
     LOG_I("accel: A=Pass, B=Fail");
@@ -312,7 +311,7 @@ static TestResult test_magnetometer() {
     for (int32_t t = 0; t < 10; ++t) {
         auto m = s_mag.read();
         LOG_I("mag: x=%d y=%d z=%d", m.m_x, m.m_y, m.m_z);
-        osal::task::sleep_for(200);
+        utkernel::task::sleep_for(200);
     }
 
     LOG_I("mag: A=Pass, B=Fail");
@@ -421,12 +420,12 @@ static int app_main() {
         if (i < 4) {
             show_result_row(i + 1, results[i]);
         }
-        osal::task::sleep_for(500);
-        osal::task::sleep_for(300);
+        utkernel::task::sleep_for(500);
+        utkernel::task::sleep_for(300);
     }
 
     clear_frame();
-    osal::task::sleep_for(200);
+    utkernel::task::sleep_for(200);
 
     if (allPass) {
         show_check();
@@ -437,7 +436,7 @@ static int app_main() {
     }
 
     for (;;) {
-        osal::task::sleep_for(1000);
+        utkernel::task::sleep_for(1000);
     }
 
     return 0;

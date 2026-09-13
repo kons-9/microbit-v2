@@ -3,14 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 add_library(drivers STATIC)
 
 target_sources(drivers PRIVATE
-    src/accelerometer.cpp
-    src/button.cpp
-    src/led.cpp
-    src/magnetometer.cpp
-    src/mic.cpp
-    src/speaker.cpp
-    src/temperature.cpp
-    src/touch.cpp
+    src/ble.cpp
     src/uart.cpp
 )
 
@@ -21,7 +14,10 @@ target_include_directories(drivers
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(drivers PUBLIC io)
+target_link_libraries(drivers
+    PUBLIC io
+    PRIVATE utkernel_cpp
+)
 
 if(NOT DEFINED TARGET_ARCH)
     message(FATAL_ERROR "TARGET_ARCH not set")
@@ -29,6 +25,7 @@ endif()
 
 if(TARGET_ARCH STREQUAL "microbit")
     target_sources(drivers PRIVATE
+        src/arch/microbit/ble_microbit.cpp
         src/arch/microbit/accelerometer_microbit.cpp
         src/arch/microbit/button_microbit.cpp
         src/arch/microbit/led_microbit.cpp
@@ -39,7 +36,7 @@ if(TARGET_ARCH STREQUAL "microbit")
         src/arch/microbit/touch_microbit.cpp
         src/arch/microbit/uart_microbit.cpp
     )
-    target_link_libraries(drivers PRIVATE nrfx kernel)
+    target_link_libraries(drivers PRIVATE nrfx)
 elseif(TARGET_ARCH STREQUAL "linux")
     target_sources(drivers PRIVATE
         src/arch/linux/uart_linux.cpp

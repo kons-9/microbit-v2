@@ -10,7 +10,7 @@
 
 #include "nrf_gpio.h"
 
-#include <tk/tkernel.h>
+#include <utkernel/task>
 
 /* ==================================================================
  * Constants
@@ -48,18 +48,12 @@ bool Button::wait_press(uint8_t id, uint32_t timeout_ms) {
 
     while (timeout_ms == 0 || elapsed < timeout_ms) {
         if (is_pressed(id)) {
-            if (auto er = tk_dly_tsk(DEBOUNCE_MS); er < E_OK) {
-                LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
-                return false;
-            }
+            utkernel::task::sleep_for(DEBOUNCE_MS);
             if (is_pressed(id)) {
                 return true;
             }
         }
-        if (auto er = tk_dly_tsk(POLL_INTERVAL_MS); er < E_OK) {
-            LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
-            return false;
-        }
+        utkernel::task::sleep_for(POLL_INTERVAL_MS);
         elapsed += POLL_INTERVAL_MS;
     }
     return false;
@@ -70,27 +64,18 @@ uint8_t Button::wait_any(uint32_t timeout_ms) {
 
     while (timeout_ms == 0 || elapsed < timeout_ms) {
         if (is_pressed(0)) {
-            if (auto er = tk_dly_tsk(DEBOUNCE_MS); er < E_OK) {
-                LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
-                return 0xFF;
-            }
+            utkernel::task::sleep_for(DEBOUNCE_MS);
             if (is_pressed(0)) {
                 return 0;
             }
         }
         if (is_pressed(1)) {
-            if (auto er = tk_dly_tsk(DEBOUNCE_MS); er < E_OK) {
-                LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
-                return 0xFF;
-            }
+            utkernel::task::sleep_for(DEBOUNCE_MS);
             if (is_pressed(1)) {
                 return 1;
             }
         }
-        if (auto er = tk_dly_tsk(POLL_INTERVAL_MS); er < E_OK) {
-            LOG_E("tk_dly_tsk failed: %ld", static_cast<int32_t>(er));
-            return 0xFF;
-        }
+        utkernel::task::sleep_for(POLL_INTERVAL_MS);
         elapsed += POLL_INTERVAL_MS;
     }
     return 0;

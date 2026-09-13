@@ -68,7 +68,7 @@ uint16_t get_uptime_ms16();
 static constexpr uint8_t RECORD_VERSION = 1;
 
 template <FlashLogEntry T>
-inline bool write(const T &entry) {
+inline library::Result<void, flash_fs::Error> write(const T &entry) {
     RecordHeader hdr{};
     hdr.version = RECORD_VERSION;
     hdr.type = static_cast<uint8_t>(T::kType);

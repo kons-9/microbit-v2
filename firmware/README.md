@@ -23,10 +23,13 @@ cd kernel && ./setup.sh && cd ..
 
 | コマンド | 説明 |
 |---|---|
-| `make build` | メインアプリをビルド |
+| `make build` | SoftDeviceなしのメインアプリをビルド |
 | `make build-updater` | OTA アップデータをビルド |
 | `make flash` | メインアプリを書き込み |
 | `make flash-updater` | アップデータを書き込み |
+| `make build-advertise-test` | SoftDeviceなしのAdvertising確認アプリをビルド |
+| `make flash-advertise-test` | Advertising確認アプリを書き込み |
+| `make flash-advertise-test-recover` | 既存のSoftDevice等からスタンドアロンへ切り替える初回のみ。全消去して書き込み |
 | `make all` | flash + flash-updater |
 | `make clean` | ビルド成果物を削除 |
 | `make format` | clang-format-18 でソース整形 |
@@ -39,10 +42,9 @@ Catch2 v3 を使用。統合テストビルド（`test/CMakeLists.txt`）で Cat
 
 ```bash
 make test              # 全テスト
-make test-osal         # osal だけ (22件)
+make test-utkernel      # utkernel-cpp だけ (22件)
 make test-flash_fs     # flash_fs だけ (13件)
 make test-shell        # shell だけ (9件)
-make test-signal       # signal だけ (6件)
 make test-flash_log    # flash_log だけ (4件)
 make test-template     # template だけ (1件)
 ```
@@ -56,22 +58,19 @@ cd components/log/tools && python3 -m pytest test_decode.py -v
 
 ```
 apps/
-├── main/           BLE スキャン → RSSI 収集 → Flash 記録 → OTA 転送
+├── main/           BLE Advertisingメインアプリ
 ├── updater/        OTA ファームウェア書き込み
 └── factory-test/   ハードウェア検査
 
 components/         platform-independent ロジック + arch/ 層
-├── ble/            BLE GAP (scan/advertise)
 ├── flash_fs/       NOR Flash ファイルシステム (stream + block)
 ├── shell/          UART シェル (help/ls/cat/erase)
 ├── log/            バイナリログ (flash_log) + テキストログ (log)
-├── signal/         EMA フィルタ / RSSI 集約
-├── osal/           RTOS 抽象化 (mutex/semaphore/task/timer)
 ├── ota/            OTA 受信・検証・書き込み
 ├── crash/          HardFault ハンドラ + crash info 永続化
 ├── sysconfig/      メモリマップ定数
-├── drivers/        ハードウェアドライバ群
-└── utkernel-cpp/   μT-Kernel C ラッパーヘッダ
+├── drivers/        BLE GAP、UART、ハードウェアドライバ群
+└── utkernel-cpp/   RAII対応のμT-Kernel C++抽象化
 
 kernel/             μT-Kernel 3 (setup.sh で取得)
 linker/             リンカスクリプト
@@ -83,7 +82,7 @@ test/               統合テストビルド (Catch2)
 
 | 領域 | アドレス | サイズ |
 |---|---|---|
-| Application | `0x00000000` - `0x0006FFFF` | 448 KB |
+| Application | `0x00000000` - `0x0006DFFF` | 440 KB |
 | Flash FS (log) | `0x00070000` - `0x00073FFF` | 16 KB (4 pages) |
 | Flash FS (config) | `0x00074000` - `0x00074FFF` | 4 KB (1 page) |
 | Flash FS (ota_staging) | `0x00075000` - `0x00077FFF` | 12 KB (3 pages) |
