@@ -33,8 +33,8 @@ enum class AddressType : uint8_t {
 
 /** BLE アドレス */
 struct Address {
-    uint8_t type;
-    uint8_t value[6];
+    AddressType type;
+    uint8_t value[ADDRESS_LENGTH];
 };
 
 /* ==================================================================
@@ -68,12 +68,20 @@ struct DiscoveryParams {
  * ================================================================== */
 
 /** スキャン結果1件 */
+enum class AdvertiseEventType : uint8_t {
+    ConnectableUndirected = 0,    /**< ADV_IND */
+    ConnectableDirected = 1,      /**< ADV_DIRECT_IND */
+    ScannableUndirected = 2,      /**< ADV_SCAN_IND */
+    NonConnectableUndirected = 3, /**< ADV_NONCONN_IND */
+    ScanResponse = 4,             /**< SCAN_RSP */
+};
+
 struct DiscoveryDescriptor {
     Address address;     /**< Advertiser address */
     int8_t rssi;         /**< RSSI (dBm) */
     uint8_t data_length; /**< AD data length */
     const uint8_t *data; /**< AD data pointer (コールバック内のみ有効) */
-    int8_t event_type;   /**< ADV_IND=0, ADV_DIRECT=1, ADV_SCAN=2, ADV_NONCONN=3, SCAN_RSP=4 */
+    AdvertiseEventType event_type;
 };
 
 /* ==================================================================
@@ -88,7 +96,7 @@ enum class GapEventType : uint8_t {
 
 /** GAP イベント */
 struct GapEvent {
-    uint8_t type; /**< GapEventType */
+    GapEventType type;
     union {
         DiscoveryDescriptor discovery;
         struct {
@@ -132,7 +140,7 @@ int32_t init(void);
  * @param callback_argument コールバック引数
  * @return 0 on success, Error on failure
  */
-int32_t gap_discover(uint8_t own_address_type,
+int32_t gap_discover(AddressType own_address_type,
                      int32_t duration_ms,
                      const DiscoveryParams *params,
                      GapEventCallback callback,
@@ -159,6 +167,14 @@ int32_t gap_discovery_active(void);
 /** AD データの最大長 (BLE 4.x 仕様: 31 bytes) */
 constexpr uint8_t ADVERTISE_DATA_MAX_LENGTH = 31;
 
+/** Advertising PDU type */
+enum class AdvertisePduType : uint8_t {
+    ConnectableUndirected = 0,    /**< ADV_IND */
+    ConnectableDirected = 1,      /**< ADV_DIRECT_IND */
+    NonConnectableUndirected = 2, /**< ADV_NONCONN_IND */
+    ScannableUndirected = 6,      /**< ADV_SCAN_IND */
+};
+
 /** Advertising パラメータ */
 struct GapAdvertiseParams {
     /**
@@ -176,7 +192,7 @@ struct GapAdvertiseParams {
      *   2 = ADV_NONCONN_IND  (non-connectable undirected) ← ビーコン用
      *   6 = ADV_SCAN_IND     (scannable undirected)
      */
-    uint8_t advertise_type;
+    AdvertisePduType advertise_type;
 };
 
 /**
@@ -253,7 +269,7 @@ int32_t gap_advertise_set_data(const uint8_t *data, uint8_t length);
  * @param params            Advertising パラメータ
  * @return 0 on success, Error on failure
  */
-int32_t gap_advertise_start(uint8_t own_address_type, const GapAdvertiseParams *params);
+int32_t gap_advertise_start(AddressType own_address_type, const GapAdvertiseParams *params);
 
 /** AdvertisingのRADIOデバッグ状態を取得する */
 int32_t gap_advertise_get_debug_status(AdvertiseDebugStatus *status);

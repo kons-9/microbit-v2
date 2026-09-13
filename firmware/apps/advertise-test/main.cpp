@@ -105,7 +105,7 @@ static void status_task(void *) {
 
 extern "C" int usermain(void) {
     s_uart.init();
-    LogInit(LOG_LEVEL_DEBUG, s_uart);
+    logging::Logger::instance().init(logging::LogLevel::Debug, s_uart);
 
     auto result = ble::init();
     if (result != 0) {
@@ -125,9 +125,9 @@ extern "C" int usermain(void) {
     params.interval_min = static_cast<uint16_t>((ADVERTISING_INTERVAL_MS * 1000UL) / 625UL);
     params.interval_max = params.interval_min;
     /* 切り分け用に接続可能広告を使用。PDUがBLE Explorerに見えるか確認する。 */
-    params.advertise_type = 0; /* ADV_IND */
+    params.advertise_type = ble::AdvertisePduType::ConnectableUndirected;
 
-    result = ble::gap_advertise_start(static_cast<uint8_t>(ble::AddressType::Random), &params);
+    result = ble::gap_advertise_start(ble::AddressType::Random, &params);
     if (result != 0) {
         LOG_E("advertising start failed: %ld", static_cast<long>(result));
         utkernel::task::sleep_forever();
@@ -135,7 +135,7 @@ extern "C" int usermain(void) {
     }
 
     LOG_I("advertising started: BLE_TEST, interval=%u ms", static_cast<unsigned>(ADVERTISING_INTERVAL_MS));
-    LogHexDump(LOG_LEVEL_INFO, LOG_TAG, ADVERTISE_DATA, sizeof(ADVERTISE_DATA));
+    logging::Logger::instance().hex_dump(logging::LogLevel::Info, LOG_TAG, ADVERTISE_DATA, sizeof(ADVERTISE_DATA));
 
     utkernel::task::config task_config;
     task_config.priority = 10;

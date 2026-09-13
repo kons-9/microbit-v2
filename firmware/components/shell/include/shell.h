@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <cstddef>
 
+#include "fs.h"
+
 namespace io {
 class Stream;
 }
@@ -26,6 +28,12 @@ namespace shell {
 
 /** コマンドハンドラ関数型 */
 using CmdHandler = void (*)(int32_t argc, const char *const *argv);
+
+/** シェルの操作モード */
+enum class Mode : uint8_t {
+    ReadWrite,
+    ReadOnly,
+};
 
 /** コマンドエントリ */
 struct Command {
@@ -44,7 +52,11 @@ struct Command {
  * @param extra_cmds  追加コマンドテーブル (NULLで組み込みのみ)
  * @param extra_count 追加コマンド数
  */
-void init(io::Stream &stream, const Command *extra_cmds, uint8_t extra_count);
+void init(io::Stream &stream,
+          fs::FileSystem &file_system,
+          const Command *extra_cmds,
+          uint8_t extra_count,
+          Mode mode = Mode::ReadWrite);
 
 /**
  * @brief 1文字をシェルに入力する (UART RX割り込みから呼ぶ)

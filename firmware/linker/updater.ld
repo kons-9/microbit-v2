@@ -1,6 +1,6 @@
 /*
  * updater.ld
- * Linker script for the OTA updater
+ * Linker script for the log reader updater
  *
  * Placed in the Updater slot: 0x0006E000 - 0x00077FFF (40 KB)
  * SoftDevice is not used.
@@ -55,5 +55,6 @@ SECTIONS {
         . = ALIGN(4);
         __bss_end = .;
         __end = .;
+        PROVIDE(end = .);
     } >RAM
 }

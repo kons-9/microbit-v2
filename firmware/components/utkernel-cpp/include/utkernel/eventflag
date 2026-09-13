@@ -11,9 +11,9 @@ namespace utkernel {
 
 class event_flag {
 public:
-    enum wait_mode : uint32_t {
-        any = 0x01,
-        all = 0x00,
+    enum class wait_mode : uint32_t {
+        Any = 0x01,
+        All = 0x00,
     };
 
     explicit event_flag(uint32_t initial = 0);

@@ -6,6 +6,12 @@ set_property(CACHE APP_TARGET PROPERTY STRINGS main factory-test updater integra
 
 option(ENABLE_LOG "log enable" ON)
 
+# VS Code などの IDE 向けに compile_commands.json を生成する。
+# -DCMAKE_EXPORT_COMPILE_COMMANDS=OFF で無効化できる。
+option(CMAKE_EXPORT_COMPILE_COMMANDS
+       "Generate compile_commands.json for IDEs"
+       ON)
+
 # 外部から追加フラグを注入 (e.g. -DEXTRA_C_FLAGS="-DDEBUG_CRASH")
 set(EXTRA_C_FLAGS "" CACHE STRING "Additional C compile flags")
 set(EXTRA_CXX_FLAGS "" CACHE STRING "Additional C++ compile flags")

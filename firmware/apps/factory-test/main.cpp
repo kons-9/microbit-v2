@@ -153,10 +153,10 @@ static TestResult wait_user_judgment() {
     LOG_D("waiting for user judgment: A=Pass, B=Fail");
     for (;;) {
         auto btn = s_button.wait_any(0);
-        if (btn == 0) {
+        if (btn == drivers::ButtonId::A) {
             return TestResult::Pass;
         }
-        if (btn == 1) {
+        if (btn == drivers::ButtonId::B) {
             return TestResult::Fail;
         }
     }
@@ -321,13 +321,13 @@ static TestResult test_magnetometer() {
 static TestResult test_buttons() {
     show_char('A');
     LOG_I("btn: press A (15s timeout)");
-    if (!s_button.wait_press(0, 15000)) {
+    if (!s_button.wait_press(drivers::ButtonId::A, 15000)) {
         return TestResult::Fail;
     }
 
     show_char('B');
     LOG_I("btn: press B (15s timeout)");
-    if (!s_button.wait_press(1, 15000)) {
+    if (!s_button.wait_press(drivers::ButtonId::B, 15000)) {
         return TestResult::Fail;
     }
 
@@ -388,7 +388,7 @@ extern "C" int usermain(void) {
 
 static int app_main() {
     s_uart.init();
-    LogInit(LOG_LEVEL_DEBUG, s_uart);
+    logging::Logger::instance().init(logging::LogLevel::Debug, s_uart);
     LOG_I("factory-test start");
 
     s_led.init();

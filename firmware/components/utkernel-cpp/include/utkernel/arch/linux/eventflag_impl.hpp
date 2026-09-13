@@ -61,7 +61,7 @@ inline uint32_t event_flag::wait(uint32_t pattern, wait_mode mode, uint32_t time
     }
 
     while (true) {
-        bool match = (mode == any) ? (ef->flags & pattern) != 0 : (ef->flags & pattern) == pattern;
+        bool match = (mode == wait_mode::Any) ? (ef->flags & pattern) != 0 : (ef->flags & pattern) == pattern;
         if (match) {
             uint32_t result = ef->flags & pattern;
             pthread_mutex_unlock(&ef->mtx);

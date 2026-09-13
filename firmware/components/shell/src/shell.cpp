@@ -4,7 +4,7 @@
  */
 
 #include "shell.h"
-#include "flash_fs.h"
+#include "fs.h"
 #include "io_stream.h"
 
 #include <cstring>
@@ -31,6 +31,8 @@ static size_t s_linePos = 0;
 static const Command *s_extraCmds = nullptr;
 static uint8_t s_extraCount = 0;
 static io::Stream *s_stream = nullptr;
+static fs::FileSystem *s_file_system = nullptr;
+static Mode s_mode = Mode::ReadWrite;
 
 /* ================================================================== */
 /*  Output helpers                                                    */
@@ -74,6 +76,9 @@ static constexpr uint8_t BUILTIN_COUNT = static_cast<uint8_t>(sizeof(BUILTIN_CMD
 static void cmd_help(int32_t /*argc*/, const char *const * /*argv*/) {
     puts("Commands:\r\n");
     for (uint8_t i = 0; i < BUILTIN_COUNT; ++i) {
+        if (s_mode == Mode::ReadOnly && std::strcmp(BUILTIN_CMDS[i].name, "erase") == 0) {
+            continue;
+        }
         printf("  %-8s %s\r\n", BUILTIN_CMDS[i].name, BUILTIN_CMDS[i].help);
     }
     for (uint8_t i = 0; i < s_extraCount; ++i) {
@@ -82,16 +87,16 @@ static void cmd_help(int32_t /*argc*/, const char *const * /*argv*/) {
 }
 
 static void cmd_ls(int32_t /*argc*/, const char *const * /*argv*/) {
-    printf("%-10s %6s/%6s  %s\r\n", "NAME", "USED", "CAP", "MODE");
-    for (uint8_t i = 0; i < flash_fs::FILE_COUNT; ++i) {
-        flash_fs::FileInfo info;
-        if (flash_fs::get_info(static_cast<flash_fs::FileId>(i), &info)) {
-            const char *mode_str = (info.mode == flash_fs::MODE_STREAM) ? "stream" : "block";
+    printf("%-10s %6s/%6s  %s\r\n", "NAME", "USED", "CAP", "TYPE");
+    for (size_t i = 0; i < static_cast<size_t>(fs::FileId::Count); ++i) {
+        fs::FileInfo info;
+        if (s_file_system != nullptr && s_file_system->get_info(static_cast<fs::FileId>(i), &info)) {
+            const char *type_str = (info.type == fs::FileType::RingBuffer) ? "ring" : "fixed";
             printf("%-10s %6lu/%6lu  [%s]\r\n",
                    info.name,
                    static_cast<unsigned long>(info.used),
                    static_cast<unsigned long>(info.capacity),
-                   mode_str);
+                   type_str);
         }
     }
 }
@@ -102,7 +107,12 @@ static void cmd_cat(int32_t argc, const char *const *argv) {
         return;
     }
 
-    auto id = flash_fs::find_by_name(argv[1]);
+    if (s_file_system == nullptr) {
+        puts("File system is not initialized\r\n");
+        return;
+    }
+
+    auto id = s_file_system->find_by_name(argv[1]);
     if (!id) {
         printf("Unknown file: %s\r\n", argv[1]);
         return;
@@ -113,8 +123,8 @@ static void cmd_cat(int32_t argc, const char *const *argv) {
         hex_mode = true;
     }
 
-    flash_fs::FileInfo info;
-    flash_fs::get_info(*id, &info);
+    fs::FileInfo info;
+    s_file_system->get_info(*id, &info);
 
     // 256バイトずつ読み出し
     uint8_t buf[256];
@@ -128,10 +138,10 @@ static void cmd_cat(int32_t argc, const char *const *argv) {
         }
 
         size_t read_len = 0;
-        if (info.mode == flash_fs::MODE_STREAM) {
-            read_len = flash_fs::read(*id, offset, buf, chunk);
+        if (info.type == fs::FileType::RingBuffer) {
+            read_len = s_file_system->read(*id, offset, buf, chunk);
         } else {
-            read_len = flash_fs::block_read(*id, offset, buf, chunk);
+            read_len = s_file_system->block_read(*id, offset, buf, chunk);
         }
 
         if (read_len == 0) {
@@ -165,13 +175,18 @@ static void cmd_erase(int32_t argc, const char *const *argv) {
         return;
     }
 
-    auto id = flash_fs::find_by_name(argv[1]);
+    if (s_file_system == nullptr) {
+        puts("File system is not initialized\r\n");
+        return;
+    }
+
+    auto id = s_file_system->find_by_name(argv[1]);
     if (!id) {
         printf("Unknown file: %s\r\n", argv[1]);
         return;
     }
 
-    flash_fs::erase(*id);
+    s_file_system->erase(*id);
     puts("OK\r\n");
 }
 
@@ -209,6 +224,9 @@ static void dispatch_line(void) {
 
     // コマンド検索
     for (uint8_t i = 0; i < BUILTIN_COUNT; ++i) {
+        if (s_mode == Mode::ReadOnly && std::strcmp(BUILTIN_CMDS[i].name, "erase") == 0) {
+            continue;
+        }
         if (std::strcmp(args[0], BUILTIN_CMDS[i].name) == 0) {
             BUILTIN_CMDS[i].handler(argc, args);
             return;
@@ -228,10 +246,12 @@ static void dispatch_line(void) {
 /*  Public API                                                        */
 /* ================================================================== */
 
-void init(io::Stream &stream, const Command *extra_cmds, uint8_t extra_count) {
+void init(io::Stream &stream, fs::FileSystem &file_system, const Command *extra_cmds, uint8_t extra_count, Mode mode) {
     s_stream = &stream;
+    s_file_system = &file_system;
     s_extraCmds = extra_cmds;
     s_extraCount = extra_count;
+    s_mode = mode;
     s_linePos = 0;
     puts(PROMPT);
 }

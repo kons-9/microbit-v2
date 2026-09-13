@@ -36,7 +36,7 @@ static void on_advertise_received(const DiscoveryDescriptor *descriptor) {
     }
 
     GapEvent event{};
-    event.type = static_cast<uint8_t>(GapEventType::Discovery);
+    event.type = GapEventType::Discovery;
     event.discovery = *descriptor;
 
     auto result = s_callback(&event, s_callbackArgument);
@@ -58,7 +58,7 @@ int32_t init(void) {
     return ble_arch_init();
 }
 
-int32_t gap_discover(uint8_t own_address_type,
+int32_t gap_discover(AddressType own_address_type,
                      int32_t duration_ms,
                      const DiscoveryParams *params,
                      GapEventCallback callback,
@@ -100,7 +100,7 @@ int32_t gap_discover_cancel(void) {
     /* discovery_complete イベント通知 */
     if (s_callback != nullptr) {
         GapEvent event{};
-        event.type = static_cast<uint8_t>(GapEventType::DiscoveryComplete);
+        event.type = GapEventType::DiscoveryComplete;
         event.discovery_complete.reason = 0;
         s_callback(&event, s_callbackArgument);
     }
@@ -144,11 +144,12 @@ static constexpr uint8_t PDU_BUFFER_SIZE = 3 + 6 + ADVERTISE_DATA_MAX_LENGTH;
 static uint8_t s_pduBuffer[PDU_BUFFER_SIZE] = {};
 static uint8_t s_pduLength = 0;
 
-static void build_advertise_pdu(uint8_t advertise_type, uint8_t tx_add) {
+static void build_advertise_pdu(AdvertisePduType advertise_type, uint8_t tx_add) {
     uint8_t payload_length = 6 + s_advertiseDataLength;
+    const uint8_t pdu_type = static_cast<uint8_t>(advertise_type);
 
     /* S0: PDU Header 下位バイト */
-    s_pduBuffer[0] = (advertise_type & 0x0F) | static_cast<uint8_t>((tx_add & 0x01) << 6);
+    s_pduBuffer[0] = (pdu_type & 0x0F) | static_cast<uint8_t>((tx_add & 0x01) << 6);
 
     /* LENGTH: payload 長 */
     s_pduBuffer[1] = payload_length;
@@ -174,7 +175,7 @@ int32_t gap_advertise_set_data(const uint8_t *data, uint8_t length) {
     return static_cast<int32_t>(Error::Success);
 }
 
-int32_t gap_advertise_start(uint8_t own_address_type, const GapAdvertiseParams *params) {
+int32_t gap_advertise_start(AddressType own_address_type, const GapAdvertiseParams *params) {
     if (s_advertising != 0) {
         return static_cast<int32_t>(Error::Busy);
     }
@@ -195,7 +196,7 @@ int32_t gap_advertise_start(uint8_t own_address_type, const GapAdvertiseParams *
     s_ownAddress.value[5] = 0xC0; /* NOTE: random static の場合 bit[7:6]=11 */
 
     /* PDU を構築 */
-    uint8_t tx_add = (own_address_type == static_cast<uint8_t>(AddressType::Random)) ? 1 : 0;
+    uint8_t tx_add = (own_address_type == AddressType::Random) ? 1 : 0;
     build_advertise_pdu(params->advertise_type, tx_add);
 
     /* arch 層に PDU を渡す */
@@ -205,7 +206,7 @@ int32_t gap_advertise_start(uint8_t own_address_type, const GapAdvertiseParams *
     }
 
     LOG_D("advertise pdu: type=%u tx_add=%u addr=%02x:%02x:%02x:%02x:%02x:%02x length=%u",
-          static_cast<unsigned>(params->advertise_type),
+          static_cast<unsigned>(static_cast<uint8_t>(params->advertise_type)),
           static_cast<unsigned>(tx_add),
           static_cast<unsigned>(s_ownAddress.value[5]),
           static_cast<unsigned>(s_ownAddress.value[4]),
@@ -214,7 +215,7 @@ int32_t gap_advertise_start(uint8_t own_address_type, const GapAdvertiseParams *
           static_cast<unsigned>(s_ownAddress.value[1]),
           static_cast<unsigned>(s_ownAddress.value[0]),
           static_cast<unsigned>(s_pduLength));
-    LogHexDump(LOG_LEVEL_DEBUG, "BLE", s_pduBuffer, s_pduLength);
+    logging::Logger::instance().hex_dump(logging::LogLevel::Debug, "BLE", s_pduBuffer, s_pduLength);
 
     /* Advertising 開始 (interval の中間値を使用) */
     uint16_t interval = static_cast<uint16_t>((params->interval_min + params->interval_max) / 2);

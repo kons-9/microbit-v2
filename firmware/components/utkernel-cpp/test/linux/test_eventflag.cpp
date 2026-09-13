@@ -4,20 +4,20 @@
 TEST_CASE("event_flag set/wait any", "[eventflag]") {
     utkernel::event_flag ef;
     ef.set(0x01);
-    uint32_t result = ef.wait(0x01, utkernel::event_flag::any, 100);
+    uint32_t result = ef.wait(0x01, utkernel::event_flag::wait_mode::Any, 100);
     REQUIRE(result == 0x01);
 }
 
 TEST_CASE("event_flag set/wait all", "[eventflag]") {
     utkernel::event_flag ef;
     ef.set(0x03);
-    uint32_t result = ef.wait(0x03, utkernel::event_flag::all, 100);
+    uint32_t result = ef.wait(0x03, utkernel::event_flag::wait_mode::All, 100);
     REQUIRE(result == 0x03);
 }
 
 TEST_CASE("event_flag wait timeout", "[eventflag]") {
     utkernel::event_flag ef;
-    uint32_t result = ef.wait(0x01, utkernel::event_flag::any, 10);
+    uint32_t result = ef.wait(0x01, utkernel::event_flag::wait_mode::Any, 10);
     REQUIRE(result == 0);
 }
 

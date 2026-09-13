@@ -46,9 +46,9 @@ class Accelerometer {
 
     /**
      * レンジを設定する
-     * @param range 加速度レンジ (0–3)
+     * @param range 加速度レンジ
      */
-    void set_range(uint8_t range);
+    void set_range(AccelerometerRange range);
 
     /**
      * 加速度データを読み取る
@@ -66,7 +66,7 @@ class Accelerometer {
     bool write_register(uint8_t reg, uint8_t val);
     bool read_registers(uint8_t reg, uint8_t *val, uint8_t len);
 
-    uint8_t m_current_range = 0;
+    AccelerometerRange m_current_range = AccelerometerRange::G2;
 };
 
 }  // namespace drivers

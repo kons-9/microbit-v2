@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
+#include "flash.h"
 #include "shell.h"
-#include "flash_fs.h"
+#include "fs.h"
 
 #include <cstring>
 
@@ -15,14 +16,18 @@ class Stream;
 extern io::Stream &mock_get_stream();
 
 /* Flash テスト用リセット */
-extern "C" void flash_fs_arch_test_reset();
+extern "C" void flash_test_reset();
 
 struct ShellFixture {
-    ShellFixture() {
-        flash_fs_arch_test_reset();
-        flash_fs::init();
+    drivers::Flash flash;
+    fs::FileSystem file_system;
+
+    ShellFixture()
+        : file_system(flash) {
+        flash_test_reset();
+        file_system.init();
         mock_uart_reset();
-        shell::init(mock_get_stream(), nullptr, 0);
+        shell::init(mock_get_stream(), file_system, nullptr, 0);
         mock_uart_reset();  // Init時のプロンプト出力をクリア
     }
 
@@ -72,8 +77,8 @@ TEST_CASE_METHOD(ShellFixture, "ls shows flash files", "[shell]") {
     REQUIRE(std::strstr(out, "log") != nullptr);
     REQUIRE(std::strstr(out, "settings") != nullptr);
     REQUIRE(std::strstr(out, "calib") != nullptr);
-    REQUIRE(std::strstr(out, "stream") != nullptr);
-    REQUIRE(std::strstr(out, "block") != nullptr);
+    REQUIRE(std::strstr(out, "ring") != nullptr);
+    REQUIRE(std::strstr(out, "fixed") != nullptr);
 }
 
 TEST_CASE_METHOD(ShellFixture, "erase known file prints OK", "[shell]") {
@@ -107,14 +112,16 @@ static void custom_handler(int32_t argc, const char *const * /*argv*/) {
 }
 
 TEST_CASE("shell_init with extra commands", "[shell]") {
-    flash_fs_arch_test_reset();
-    flash_fs::init();
+    drivers::Flash flash;
+    fs::FileSystem file_system(flash);
+    flash_test_reset();
+    file_system.init();
     mock_uart_reset();
 
     static const shell::Command extra[] = {
         {"mycmd", "My test command", custom_handler},
     };
-    shell::init(mock_get_stream(), extra, 1);
+    shell::init(mock_get_stream(), file_system, extra, 1);
     mock_uart_reset();
 
     s_customCalled = false;
@@ -127,6 +134,29 @@ TEST_CASE("shell_init with extra commands", "[shell]") {
 
     REQUIRE(s_customCalled);
     REQUIRE(s_customArgc == 3);
+}
+
+TEST_CASE("read-only shell does not expose erase", "[shell]") {
+    drivers::Flash flash;
+    fs::FileSystem file_system(flash);
+    flash_test_reset();
+    file_system.init();
+
+    shell::init(mock_get_stream(), file_system, nullptr, 0, shell::Mode::ReadOnly);
+    mock_uart_reset();
+
+    const char *help = "help\r";
+    for (const char *p = help; *p; ++p) {
+        shell::feed_char(*p);
+    }
+    REQUIRE(std::strstr(mock_uart_get_output(), "erase") == nullptr);
+
+    mock_uart_reset();
+    const char *erase = "erase log\r";
+    for (const char *p = erase; *p; ++p) {
+        shell::feed_char(*p);
+    }
+    REQUIRE(std::strstr(mock_uart_get_output(), "Unknown command: erase") != nullptr);
 }
 
 /* ================================================================== */

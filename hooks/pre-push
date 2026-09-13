@@ -7,7 +7,7 @@ cd "$(git rev-parse --show-toplevel)/firmware" || exit 1
 
 # Clean build
 rm -rf build
-cmake -B build -DAPP_TARGET=main -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 2>&1
+cmake -B build -DAPP_TARGET=main 2>&1
 if [ $? -ne 0 ]; then
     echo "ERROR: CMake configure failed."
     exit 1

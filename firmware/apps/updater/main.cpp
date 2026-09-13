@@ -1,56 +1,84 @@
 /**
  * @file main.cpp
- * @brief OTA Updater アプリケーション
+ * @brief 不揮発ログ読み出し用 updater モード
  *
- * 最小構成の BLE DFU レシーバ。
- * BLE GATT 経由でファームウェアイメージを受信し、
- * アプリケーションスロットに書き込む。
+ * 通常のファームウェア更新は行わず、Flash FS に保存されたログを
+ * UART shell から読み出す。B ボタンを押した状態で起動すると、
+ * 次回起動先を main app に戻して再起動する。
  */
 
+#define LOG_TAG "UPDATER"
+#include "log.h"
+
 #include <utkernel/task>
-#if USE_TMONITOR
-#include <tm/tmonitor.h>
-#endif
 
-#include "ble.h"
-#include "ota.h"
+#include "button.h"
+#include "flash.h"
+#include "fs.h"
+#include "shell.h"
+#include "sysconfig.h"
+#include "uart.h"
 
-/* ==================================================================
- * Updater Task
- * ================================================================== */
+struct Drivers {
+    drivers::Uart uart;
+    drivers::Flash flash;
+    drivers::Button button;
+};
 
-static void updater_task(void *) {
+struct Config {
+    Drivers &drivers;
+    fs::FileSystem file_system;
 
-    auto err = ble::init();
-    if (err != 0) {
-        goto fail;
+    explicit Config(Drivers &drivers)
+        : drivers(drivers)
+        , file_system(drivers.flash) {
     }
+};
 
-    err = ota::start_receive();
-    if (err != 0) {
-        goto fail;
+static Drivers s_drivers;
+static Config s_config(s_drivers);
+static utkernel::task s_shell_task;
+
+static void shell_task(void *) {
+    for (;;) {
+        shell::poll();
+        utkernel::task::sleep_for(10);
     }
-
-    ota::switch_mode(SYSCONFIG_BOOT_APP);
-
-fail:
-    utkernel::task::sleep_forever();
 }
 
-/* ==================================================================
- * Entry Point
- * ================================================================== */
+static int updater_main(Config &config) {
+    auto fs_result = config.file_system.init();
+    if (fs_result != 0) {
+        LOG_E("fs init failed: %ld", static_cast<long>(fs_result));
+        utkernel::task::sleep_forever();
+        return -1;
+    }
 
-static utkernel::task s_updater_task;
+    shell::init(config.drivers.uart, config.file_system, nullptr, 0, shell::Mode::ReadOnly);
 
-extern "C" int usermain(void) {
     utkernel::task::config task_config;
     task_config.priority = 10;
     task_config.stack_size = 2048;
-    if (!s_updater_task.create(updater_task, task_config) || !s_updater_task.start()) {
-        return 1;
+    if (!s_shell_task.create(shell_task, task_config) || !s_shell_task.start()) {
+        LOG_E("shell task create/start failed");
+        utkernel::task::sleep_forever();
+        return -1;
     }
 
+    LOG_I("log reader mode started (read-only shell)");
     utkernel::task::sleep_forever();
     return 0;
+}
+
+extern "C" int usermain(void) {
+    s_drivers.uart.init();
+    logging::Logger::instance().init(logging::LogLevel::Debug, s_drivers.uart);
+
+    s_drivers.button.init();
+    if (s_drivers.button.is_pressed(drivers::ButtonId::B)) {
+        LOG_I("B pressed: returning to main app");
+        sysconfig::reboot(sysconfig::BOOT_APP);
+    }
+
+    return updater_main(s_config);
 }

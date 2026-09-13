@@ -26,6 +26,10 @@ static constexpr uint32_t POLL_INTERVAL_MS = 10;
 
 namespace drivers {
 
+static bool is_valid_button(ButtonId id) {
+    return id == ButtonId::A || id == ButtonId::B;
+}
+
 /* ==================================================================
  * Public API
  * ================================================================== */
@@ -36,14 +40,14 @@ void Button::init() {
     LOG_D("init: A=P0.14, B=P0.23");
 }
 
-bool Button::is_pressed(uint8_t id) {
-    if (id > 1) {
+bool Button::is_pressed(ButtonId id) {
+    if (!is_valid_button(id)) {
         return false;
     }
-    return (nrf_gpio_pin_read(BUTTON_PINS[id]) == 0);
+    return (nrf_gpio_pin_read(BUTTON_PINS[static_cast<uint8_t>(id)]) == 0);
 }
 
-bool Button::wait_press(uint8_t id, uint32_t timeout_ms) {
+bool Button::wait_press(ButtonId id, uint32_t timeout_ms) {
     uint32_t elapsed = 0;
 
     while (timeout_ms == 0 || elapsed < timeout_ms) {
@@ -59,26 +63,26 @@ bool Button::wait_press(uint8_t id, uint32_t timeout_ms) {
     return false;
 }
 
-uint8_t Button::wait_any(uint32_t timeout_ms) {
+ButtonId Button::wait_any(uint32_t timeout_ms) {
     uint32_t elapsed = 0;
 
     while (timeout_ms == 0 || elapsed < timeout_ms) {
-        if (is_pressed(0)) {
+        if (is_pressed(ButtonId::A)) {
             utkernel::task::sleep_for(DEBOUNCE_MS);
-            if (is_pressed(0)) {
-                return 0;
+            if (is_pressed(ButtonId::A)) {
+                return ButtonId::A;
             }
         }
-        if (is_pressed(1)) {
+        if (is_pressed(ButtonId::B)) {
             utkernel::task::sleep_for(DEBOUNCE_MS);
-            if (is_pressed(1)) {
-                return 1;
+            if (is_pressed(ButtonId::B)) {
+                return ButtonId::B;
             }
         }
         utkernel::task::sleep_for(POLL_INTERVAL_MS);
         elapsed += POLL_INTERVAL_MS;
     }
-    return 0;
+    return ButtonId::None;
 }
 
 }  // namespace drivers

@@ -37,6 +37,8 @@ all: flash flash-updater
 
 format:
 	find apps components -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' | grep -v 'third_party/' | xargs clang-format-18 -i
+	
+build-all: build build-updater build-factory-test build-sample build-integration-test build-advertise-test
 
 build: $(MAIN)
 
@@ -90,27 +92,27 @@ flash-advertise-test-recover: build-advertise-test venv
 	venv/bin/pyocd flash --erase=auto $(ADVERTISE_TEST)
 
 $(MAIN):
-	cmake -B build/$(BUILD_TYPE)/main -DAPP_TARGET=main -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
+	cmake -B build/$(BUILD_TYPE)/main -DAPP_TARGET=main $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/main
 
 $(UPDATER):
-	cmake -B build/$(BUILD_TYPE)/updater -DAPP_TARGET=updater -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
+	cmake -B build/$(BUILD_TYPE)/updater -DAPP_TARGET=updater $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/updater
 
 $(FACTORY_TEST):
-	cmake -B build/$(BUILD_TYPE)/factory-test -DAPP_TARGET=factory-test -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
+	cmake -B build/$(BUILD_TYPE)/factory-test -DAPP_TARGET=factory-test $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/factory-test
 
 $(SAMPLE):
-	cmake -B build/$(BUILD_TYPE)/sample -DAPP_TARGET=sample -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
+	cmake -B build/$(BUILD_TYPE)/sample -DAPP_TARGET=sample $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/sample
 
 $(INTEGRATION_TEST):
-	cmake -B build/$(BUILD_TYPE)/integration-test -DAPP_TARGET=integration-test -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
+	cmake -B build/$(BUILD_TYPE)/integration-test -DAPP_TARGET=integration-test $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/integration-test
 
 $(ADVERTISE_TEST):
-	cmake -B build/$(BUILD_TYPE)/advertise-test -DAPP_TARGET=advertise-test -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(CMAKE_EXTRA_ARGS)
+	cmake -B build/$(BUILD_TYPE)/advertise-test -DAPP_TARGET=advertise-test $(CMAKE_EXTRA_ARGS)
 	cmake --build build/$(BUILD_TYPE)/advertise-test
 
 # ======== Unit Tests ========
@@ -124,9 +126,9 @@ test: test-build
 
 # テストのビルドだけ
 test-build:
-	cmake -B $(TEST_BUILD_DIR) test -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	cmake -B $(TEST_BUILD_DIR) test -DCMAKE_BUILD_TYPE=Debug
 	cmake --build $(TEST_BUILD_DIR) -j$$(nproc)
 
-# コンポーネント単位で実行: make test-flash_fs, make test-shell, etc.
+# コンポーネント単位で実行: make test-fs, make test-shell, etc.
 test-%: test-build
 	cd $(TEST_BUILD_DIR) && ctest --output-on-failure -R "\\[$*\\]"

@@ -13,7 +13,7 @@ target_include_directories(shell
 
 target_link_libraries(shell
     PUBLIC
-        flash_fs
+        fs
         io
 )
 

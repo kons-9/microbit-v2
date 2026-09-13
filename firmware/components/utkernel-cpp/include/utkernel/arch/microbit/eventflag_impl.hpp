@@ -39,7 +39,7 @@ inline void event_flag::clear(uint32_t bits) {
 
 inline uint32_t event_flag::wait(uint32_t pattern, wait_mode mode, uint32_t timeout_ms) {
     ID id = *reinterpret_cast<ID *>(m_storage);
-    UINT flg_mode = (mode == any) ? TWF_ORW : TWF_ANDW;
+    UINT flg_mode = (mode == wait_mode::Any) ? TWF_ORW : TWF_ANDW;
     UINT flgptn = 0;
     TMO tmo = (timeout_ms == UINT32_MAX) ? TMO_FEVR : static_cast<TMO>(timeout_ms);
     ER rc = tk_wai_flg(id, static_cast<UINT>(pattern), flg_mode, &flgptn, tmo);

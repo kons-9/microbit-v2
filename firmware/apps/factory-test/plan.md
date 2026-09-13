@@ -135,7 +135,7 @@ micro:bit v2.2 のハードウェアコンポーネントが正常に動作す�
 
 ```cpp
 // テスト関数のインターフェース
-enum TestResult { TEST_PASS, TEST_FAIL, TEST_SKIP };
+enum class TestResult : uint8_t { TEST_PASS, TEST_FAIL, TEST_SKIP };
 
 TestResult test_led(void);
 TestResult test_speaker(void);

@@ -1,6 +1,3 @@
-add_subdirectory(${CMAKE_SOURCE_DIR}/apps/main/beacon
-                 ${CMAKE_BINARY_DIR}/beacon)
-
 add_executable(app_main.elf
     main.cpp
 )
@@ -10,10 +7,8 @@ target_link_libraries(app_main.elf
         template
         utkernel_cpp
         io
-        crash
-        beacon
         shell
-        flash_fs
+        fs
         drivers
 )
 

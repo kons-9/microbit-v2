@@ -7,12 +7,10 @@ micro:bit v2.2 向けコンポーネント群。各コンポーネントは arch
 | コンポーネント | 説明 | テスト |
 |---|---|---|
 | `drivers` | BLE GAP、UART、各種ハードウェアドライバ | - |
-| `flash_fs` | NOR Flash ファイルシステム (stream + block) | 13件 |
-| `shell` | UART シェル (help/ls/cat/erase) | 9件 |
-| `log` | バイナリログ (flash_log) + テキストログ | 4件 + 16件(py) |
-| `ota` | OTA 受信・検証・書き込み | - |
-| `crash` | HardFault ハンドラ + crash info 永続化 | - |
-| `sysconfig` | メモリマップ定数 (header-only) | - |
+| `fs` | NOR Flash ファイルシステム (ring buffer + fixed file) | 16件 |
+| `shell` | UART シェル (help/ls/cat/erase) | 10件 |
+| `log` | 複数の `io::Stream` へのテキストログ出力 | 17件 |
+| `sysconfig` | メモリマップ・ブート切り替え | - |
 | `utkernel-cpp` | RAII対応のμT-Kernel C++抽象化 | 22件 |
 | `template` | 新規コンポーネントのテンプレート | 1件 |
 
@@ -37,10 +35,9 @@ BLE GAP (scan/advertise) も、RADIOのアーキテクチャ実装を含めて�
 ```bash
 cd firmware
 make test              # 全 55 件
-make test-flash_fs     # コンポーネント単位
+make test-fs     # コンポーネント単位
 make test-utkernel
 make test-shell
-make test-flash_log
 ```
 
 ## アーキテクチャパターン

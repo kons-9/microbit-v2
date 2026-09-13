@@ -9,5 +9,4 @@ __pycache__/
 *.pyc
 venv
 
-# SoftDevice binary (download separately)
-firmware/third_party/softdevice/*.hex
+.vscode/

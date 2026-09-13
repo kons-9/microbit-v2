@@ -1,3 +1,6 @@
+add_subdirectory(crash ${CMAKE_BINARY_DIR}/main_crash)
+add_subdirectory(task ${CMAKE_BINARY_DIR}/main_task)
+
 add_executable(app_main.elf
     main.cpp
 )
@@ -6,9 +9,11 @@ target_link_libraries(app_main.elf
     PRIVATE
         template
         utkernel_cpp
-        crash
+        main_crash
         io
         drivers
+        fs
+        main_task
 )
 
 # メインアプリ領域 (SoftDeviceなし、Updater/Flash FS領域は予約)

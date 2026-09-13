@@ -6,7 +6,7 @@
  *
  * C/C++ 両対応:
  *   - C++: enum class + constexpr
- *   - C  : enum + define
+ *   - C  : fixed-width typedef + define
  *
  * TODO: CMake で SYSLOG_LEVEL を定義し、ビルド時に切り替える
  */
@@ -32,13 +32,13 @@ constexpr Level ACTIVE_LEVEL = Level::Debug;
 
 #else /* C */
 
-typedef enum {
-    SYSLOG_NONE = 0,
-    SYSLOG_ERROR = 1,
-    SYSLOG_WARN = 2,
-    SYSLOG_INFO = 3,
-    SYSLOG_DEBUG = 4,
-} SyslogLevel;
+typedef uint8_t SyslogLevel;
+
+#define SYSLOG_NONE ((SyslogLevel)0)
+#define SYSLOG_ERROR ((SyslogLevel)1)
+#define SYSLOG_WARN ((SyslogLevel)2)
+#define SYSLOG_INFO ((SyslogLevel)3)
+#define SYSLOG_DEBUG ((SyslogLevel)4)
 
 /* TODO: CMake で SYSLOG_LEVEL を定義し、ビルド時に切り替える */
 #ifndef SYSLOG_ACTIVE_LEVEL

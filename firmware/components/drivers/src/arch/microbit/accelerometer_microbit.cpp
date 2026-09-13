@@ -82,17 +82,18 @@ bool Accelerometer::init() {
         LOG_E("write CTRL_REG4 failed");
         return false;
     }
-    m_current_range = 0;
+    m_current_range = AccelerometerRange::G2;
 
     LOG_D("init ok (WHO_AM_I=0x%02x)", id);
     return true;
 }
 
-void Accelerometer::set_range(uint8_t range) {
-    if (range > 3) {
+void Accelerometer::set_range(AccelerometerRange range) {
+    const auto range_value = static_cast<uint8_t>(range);
+    if (range_value > static_cast<uint8_t>(AccelerometerRange::G16)) {
         return;
     }
-    uint8_t ctrl4 = 0x08 | (range << 4);
+    uint8_t ctrl4 = 0x08 | (range_value << 4);
     if (!write_register(REG_CTRL_REG4, ctrl4)) {
         LOG_E("write CTRL_REG4 failed");
         return;
@@ -112,9 +113,10 @@ AccelerometerData Accelerometer::read() {
     int16_t raw_y = static_cast<int16_t>((raw[3] << 8) | raw[2]) >> 4;
     int16_t raw_z = static_cast<int16_t>((raw[5] << 8) | raw[4]) >> 4;
 
-    data.m_x = raw_x * SCALE_FACTOR[m_current_range];
-    data.m_y = raw_y * SCALE_FACTOR[m_current_range];
-    data.m_z = raw_z * SCALE_FACTOR[m_current_range];
+    const auto range_index = static_cast<uint8_t>(m_current_range);
+    data.m_x = raw_x * SCALE_FACTOR[range_index];
+    data.m_y = raw_y * SCALE_FACTOR[range_index];
+    data.m_z = raw_z * SCALE_FACTOR[range_index];
 
     return data;
 }

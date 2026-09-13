@@ -15,6 +15,15 @@
 
 #include <cstdint>
 
+extern "C" {
+extern const uint32_t __settings_start[];
+extern const uint32_t __updater_start[];
+extern const uint32_t __app_slot_start[];
+extern const uint32_t __app_slot_end[];
+}
+
+namespace sysconfig {
+
 /* ================================================================== */
 /*  Boot Mode (Settings page offset 0)                                */
 /* ================================================================== */
@@ -24,10 +33,14 @@ enum class BootMode : uint32_t {
     Updater = 1, /**< updater モードで起動 */
 };
 
-using sysconfig_boot_mode_t = BootMode;
+constexpr auto BOOT_APP = BootMode::App;
+constexpr auto BOOT_UPDATER = BootMode::Updater;
 
-constexpr auto SYSCONFIG_BOOT_APP = BootMode::App;
-constexpr auto SYSCONFIG_BOOT_UPDATER = BootMode::Updater;
+/**
+ * 次回の起動先を Settings page に保存してリセットする。
+ * この関数は成功時には戻らない。
+ */
+[[noreturn]] void reboot(BootMode mode);
 
 /* ================================================================== */
 /*  Linker symbols (link-time 解決 — constexpr 不可)                  */
@@ -36,19 +49,12 @@ constexpr auto SYSCONFIG_BOOT_UPDATER = BootMode::Updater;
 /*  &sym ではなく sym で直接アドレスが取れる。                         */
 /* ================================================================== */
 
-extern "C" {
-extern const uint32_t __settings_start[];
-extern const uint32_t __updater_start[];
-extern const uint32_t __app_slot_start[];
-extern const uint32_t __app_slot_end[];
-}
-
 /**
- * Settings page アドレスを取得する (0x7F000)
+ * Settings page アドレスを取得する (リンカスクリプトで定義)
  * @return Settings page の物理アドレス
  */
-inline uint32_t sysconfig_get_settings_address() {
-    return reinterpret_cast<uint32_t>(__settings_start);
+inline uint32_t get_settings_address() {
+    return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(__settings_start));
 }
 
 /**
@@ -56,23 +62,23 @@ inline uint32_t sysconfig_get_settings_address() {
  * @return Settings page への volatile ポインタ
  * @post 返却値は有効な Flash アドレスを指す
  */
-inline volatile uint32_t *sysconfig_get_settings_pointer() {
+inline volatile uint32_t *get_settings_pointer() {
     return reinterpret_cast<volatile uint32_t *>(const_cast<uint32_t *>(__settings_start));
 }
 
 /**
- * Updater スロット先頭アドレスを取得する (0x6E000)
+ * Updater スロット先頭アドレスを取得する (リンカスクリプトで定義)
  * @return Updater スロットの物理アドレス
  */
-inline uint32_t sysconfig_get_updater_address() {
-    return reinterpret_cast<uint32_t>(__updater_start);
+inline uint32_t get_updater_address() {
+    return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(__updater_start));
 }
 
 /**
  * Updater ベクタテーブルへの volatile ポインタを取得する
  * @return ベクタテーブルへの volatile ポインタ
  */
-inline volatile uint32_t *sysconfig_get_updater_vector_table() {
+inline volatile uint32_t *get_updater_vector_table() {
     return reinterpret_cast<volatile uint32_t *>(const_cast<uint32_t *>(__updater_start));
 }
 
@@ -80,15 +86,15 @@ inline volatile uint32_t *sysconfig_get_updater_vector_table() {
  * App スロット先頭アドレスを取得する (0x00000)
  * @return App スロットの物理アドレス
  */
-inline uint32_t sysconfig_get_app_slot_address() {
-    return reinterpret_cast<uint32_t>(__app_slot_start);
+inline uint32_t get_app_slot_address() {
+    return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(__app_slot_start));
 }
 
 /**
  * App スロットサイズを取得する
  * @return App スロットのサイズ (bytes)
  */
-inline uint32_t sysconfig_get_app_slot_size() {
+inline uint32_t get_app_slot_size() {
     return static_cast<uint32_t>(__app_slot_end - __app_slot_start);
 }
 
@@ -96,8 +102,6 @@ inline uint32_t sysconfig_get_app_slot_size() {
 /*  Constants                                                         */
 /* ================================================================== */
 
-namespace sysconfig {
-
 constexpr uint32_t FLASH_PAGE_SIZE = 4096;
 
-} /* namespace sysconfig */
+}  // namespace sysconfig

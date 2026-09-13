@@ -16,6 +16,7 @@ namespace drivers {
 enum class ButtonId : uint8_t {
     A = 0,
     B = 1,
+    None = 0xFF, /**< タイムアウト等でボタンが選択されなかった */
 };
 
 /**
@@ -30,7 +31,7 @@ class Button {
      * ボタンが現在押されているか確認する
      * @param id  ボタン ID
      */
-    bool is_pressed(uint8_t id);
+    bool is_pressed(ButtonId id);
 
     /**
      * ボタンが押されるまで待つ
@@ -38,14 +39,14 @@ class Button {
      * @param timeout_ms  タイムアウト [ms], 0=無限待ち
      * @return true: 押された, false: タイムアウト
      */
-    bool wait_press(uint8_t id, uint32_t timeout_ms);
+    bool wait_press(ButtonId id, uint32_t timeout_ms);
 
     /**
      * どちらかのボタンが押されるまで待つ
      * @param timeout_ms  タイムアウト [ms], 0=無限待ち
-     * @return 押されたボタン ID
+     * @return 押されたボタン ID。タイムアウト時は ButtonId::None
      */
-    uint8_t wait_any(uint32_t timeout_ms);
+    ButtonId wait_any(uint32_t timeout_ms);
 };
 
 }  // namespace drivers

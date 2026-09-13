@@ -330,7 +330,7 @@ extern "C" void RADIO_IRQHandler(void) {
         ble::DiscoveryDescriptor descriptor;
         memset(&descriptor, 0, sizeof(descriptor));
 
-        descriptor.address.type = tx_add ? 0x01 : 0x00;
+        descriptor.address.type = tx_add ? ble::AddressType::Random : ble::AddressType::Public;
         memcpy(descriptor.address.value, &s_rxBuffer[3], 6);
 
         uint8_t data_length = pdu_length - 6;
@@ -339,12 +339,12 @@ extern "C" void RADIO_IRQHandler(void) {
 
         /* PDU Type → event_type 変換 */
         switch (pdu_type) {
-        case 0: descriptor.event_type = 0; break; /* ADV_IND */
-        case 1: descriptor.event_type = 1; break; /* ADV_DIRECT_IND */
-        case 2: descriptor.event_type = 3; break; /* ADV_NONCONN_IND */
-        case 6: descriptor.event_type = 2; break; /* ADV_SCAN_IND */
-        case 4: descriptor.event_type = 4; break; /* SCAN_RSP */
-        default: descriptor.event_type = 0; break;
+        case 0: descriptor.event_type = ble::AdvertiseEventType::ConnectableUndirected; break;
+        case 1: descriptor.event_type = ble::AdvertiseEventType::ConnectableDirected; break;
+        case 2: descriptor.event_type = ble::AdvertiseEventType::NonConnectableUndirected; break;
+        case 6: descriptor.event_type = ble::AdvertiseEventType::ScannableUndirected; break;
+        case 4: descriptor.event_type = ble::AdvertiseEventType::ScanResponse; break;
+        default: descriptor.event_type = ble::AdvertiseEventType::ConnectableUndirected; break;
         }
 
         /*
