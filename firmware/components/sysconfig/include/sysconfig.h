@@ -17,7 +17,7 @@
 
 extern "C" {
 extern const uint32_t __settings_start[];
-extern const uint32_t __updater_start[];
+extern const uint32_t __recovery_start[];
 extern const uint32_t __app_slot_start[];
 extern const uint32_t __app_slot_end[];
 }
@@ -30,11 +30,11 @@ namespace sysconfig {
 
 enum class BootMode : uint32_t {
     App = 0,     /**< メインアプリで起動 */
-    Updater = 1, /**< updater モードで起動 */
+    Recovery = 1, /**< リカバリーモードで起動 */
 };
 
 constexpr auto BOOT_APP = BootMode::App;
-constexpr auto BOOT_UPDATER = BootMode::Updater;
+constexpr auto BOOT_RECOVERY = BootMode::Recovery;
 
 /**
  * 次回の起動先を Settings page に保存してリセットする。
@@ -67,19 +67,19 @@ inline volatile uint32_t *get_settings_pointer() {
 }
 
 /**
- * Updater スロット先頭アドレスを取得する (リンカスクリプトで定義)
- * @return Updater スロットの物理アドレス
+ * Recovery スロット先頭アドレスを取得する (リンカスクリプトで定義)
+ * @return Recovery スロットの物理アドレス
  */
-inline uint32_t get_updater_address() {
-    return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(__updater_start));
+inline uint32_t get_recovery_address() {
+    return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(__recovery_start));
 }
 
 /**
- * Updater ベクタテーブルへの volatile ポインタを取得する
+ * Recovery ベクタテーブルへの volatile ポインタを取得する
  * @return ベクタテーブルへの volatile ポインタ
  */
-inline volatile uint32_t *get_updater_vector_table() {
-    return reinterpret_cast<volatile uint32_t *>(const_cast<uint32_t *>(__updater_start));
+inline volatile uint32_t *get_recovery_vector_table() {
+    return reinterpret_cast<volatile uint32_t *>(const_cast<uint32_t *>(__recovery_start));
 }
 
 /**

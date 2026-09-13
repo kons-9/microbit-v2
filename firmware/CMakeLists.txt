@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.16)
 
 # ==== アプリケーション選択（これだけ指定すればよい） ====
 set(APP_TARGET "main" CACHE STRING "Application target")
-set_property(CACHE APP_TARGET PROPERTY STRINGS main factory-test updater integration-test advertise-test)
+set(APP_ARCH "microbit" CACHE STRING "Application platform")
+set_property(CACHE APP_ARCH PROPERTY STRINGS microbit)
+set_property(CACHE APP_TARGET PROPERTY STRINGS main recovery integration-test sample)
 
 option(ENABLE_LOG "log enable" ON)
 
@@ -17,7 +19,7 @@ set(EXTRA_C_FLAGS "" CACHE STRING "Additional C compile flags")
 set(EXTRA_CXX_FLAGS "" CACHE STRING "Additional C++ compile flags")
 
 # ==== app.cmake が TARGET_ARCH, ツールチェイン, ARCH_DEFINITIONS を定義 ====
-set(APP_DIR apps/${APP_TARGET})
+set(APP_DIR apps/${APP_ARCH}/${APP_TARGET})
 if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${APP_DIR}/app.cmake)
     message(FATAL_ERROR "Unknown APP_TARGET=${APP_TARGET}")
 endif()

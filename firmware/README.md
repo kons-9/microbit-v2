@@ -24,13 +24,12 @@ cd kernel && ./setup.sh && cd ..
 | コマンド | 説明 |
 |---|---|
 | `make build` | SoftDeviceなしのメインアプリをビルド |
-| `make build-updater` | 不揮発ログ読み出し用 updater をビルド |
+| `make build-recovery` | リカバリー用ファームウェアをビルド |
+| `make build-integration-test` | 実機向け統合テストをビルド |
 | `make flash` | メインアプリを書き込み |
-| `make flash-updater` | アップデータを書き込み |
-| `make build-advertise-test` | SoftDeviceなしのAdvertising確認アプリをビルド |
-| `make flash-advertise-test` | Advertising確認アプリを書き込み |
-| `make flash-advertise-test-recover` | 既存のSoftDevice等からスタンドアロンへ切り替える初回のみ。全消去して書き込み |
-| `make all` | flash + flash-updater |
+| `make flash-recovery` | リカバリー用ファームウェアを書き込み |
+| `make flash-integration-test` | 実機向け統合テストを書き込み |
+| `make all` | flash + flash-recovery |
 | `make clean` | ビルド成果物を削除 |
 | `make format` | clang-format-18 でソース整形 |
 | `make test` | 全ユニットテスト実行 (74件) |
@@ -41,9 +40,9 @@ cd kernel && ./setup.sh && cd ..
 Catch2 v3 を使用。統合テストビルド（`test/CMakeLists.txt`）で Catch2 を一度だけコンパイルし、全テストで共有。
 
 ```bash
-make test              # 全テスト (83件)
+make test              # 全テスト (74件)
 make test-utkernel      # utkernel-cpp だけ (22件)
-make test-fs     # fs だけ (13件)
+make test-fs            # fs だけ (16件)
 make test-shell        # shell だけ (10件)
 make test-template     # template だけ (1件)
 ```
@@ -52,11 +51,13 @@ make test-template     # template だけ (1件)
 
 ```
 apps/
-├── main/           BLE Advertisingメインアプリ
-│   ├── crash/      HardFaultハンドラ + crash info永続化
-│   └── task/       EntryTask、BLE Advertising task
-├── updater/        不揮発ログ読み出し用 shell
-└── factory-test/   ハードウェア検査
+└── microbit/
+    ├── main/           BLE Advertisingメインアプリ
+    │   ├── crash/      HardFaultハンドラ + crash info永続化
+    │   └── task/       EntryTask、BLE Advertising task
+    ├── recovery/       緊急時の不揮発ログ読み出し用 shell
+    ├── integration-test/ 統合テスト
+    └── sample/         サンプルアプリ
 
 components/         platform-independent ロジック + arch/ 層
 ├── fs/       NOR Flash ファイルシステム (ring buffer + fixed file)
@@ -77,7 +78,7 @@ test/               統合テストビルド (Catch2)
 | 領域 | アドレス | サイズ |
 |---|---|---|
 | Application | `0x00000000` - `0x00067FFF` | 416 KB |
-| Updater | `0x00068000` - `0x00077FFF` | 64 KB |
+| Recovery | `0x00068000` - `0x00077FFF` | 64 KB |
 | Flash FS (log) | `0x00078000` - `0x0007BFFF` | 16 KB (4 pages) |
 | Flash FS (settings) | `0x0007C000` - `0x0007CFFF` | 4 KB (1 page) |
 | Flash FS (calib) | `0x0007D000` - `0x0007DFFF` | 4 KB (1 page) |
