@@ -1,42 +1,73 @@
 # BLE屋内位置推定
 
-Bluetooth Low Energy (BLE) の受信信号強度 (RSSI) を収集し、機械学習ベースの位置推定を行う屋内測位システム。
-
-## システム概要
-
-micro:bit v2.2 (nRF52833) をスキャナ端末として使用し、周囲の BLE ビーコンの RSSI を収集・記録する。
-記録データは OTA またはシェル経由で取得し、外部 AI で位置推定モデルを学習・推論する。
-
-## 推定モード
-
-| モード | サンプル数 | 間隔 | スムージング | 用途 |
-|---|---|---|---|---|
-| **ACCURACY** | 5回 | 2000ms | EMA α=0.3 | 正確性重視（見守り等） |
-| **RESPONSIVE** | 1回 | 500ms | なし (α=1.0) | 応答性重視（リアルタイム追跡） |
+Bluetooth Low Energy (BLE) の受信信号強度 (RSSI) を収集し、屋内位置推定に利用するシステムです。
+micro:bit v2.2 (nRF52833) 上で μT-Kernel 3 とファームウェアを動かします。
 
 ## クイックスタート
 
+詳細な環境構築は [wsl.md](wsl.md)、ファームウェア固有の情報は [firmware/README.md](firmware/README.md) を参照してください。
+
 ```bash
-cd firmware
-make build      # ファームウェアビルド
-make flash      # micro:bit に書き込み
-make test       # ユニットテスト実行 (55件, Catch2)
+# μT-Kernel 3 とサブモジュールを準備
+git submodule update --init --recursive
+cd firmware/kernel
+./setup.sh
+
+# メインアプリをビルド
+cd ..
+make build
+
+# Linux向けユニットテストを実行
+make test
 ```
 
-詳細は [firmware/README.md](firmware/README.md) を参照。
+micro:bitへの書き込みには、別途 pyocd とデバッガのUSB接続が必要です。
 
-## 開発環境
+```bash
+cd firmware
+make flash
+```
 
-- WSL2 (Ubuntu)
-- gcc-arm-none-eabi / CMake 3.16+
-- Python 3 + pyocd（書き込み）
-- Catch2 v3（テスト）
+## 主なMakeターゲット
+
+| コマンド | 内容 |
+|---|---|
+| `make build` | メインアプリをビルド |
+| `make build-recovery` | リカバリー用ファームウェアをビルド |
+| `make build-sample` | サンプルアプリをビルド |
+| `make build-integration-test` | 実機向け統合テストをビルド |
+| `make build-all` | すべてのファームウェアをビルド |
+| `make test` | Linux向けユニットテストを実行 |
+| `make test-<component>` | コンポーネント単位でテストを実行 |
+| `make format` | clang-format-18でソースを整形 |
+| `make flash` | メインアプリを書き込み |
+| `make flash-recovery` | リカバリー用ファームウェアを書き込み |
+| `make clean` | ビルド成果物を削除 |
+
+デバッグビルドは `IS_DEBUG=1 make build` で作成できます。
+
+## フォーマットとCI
+
+ローカルでソースを整形するには、`clang-format-18` をインストールして以下を実行します。
+
+```bash
+cd firmware
+make format
+```
+
+GitHub Actionsでは、`kernel`、`third_party`、ビルド生成物を除くC/C++ソースに対して、整形差分がないことをチェックします。
 
 ## ディレクトリ構成
 
-```
+```text
 ble-locator/
 ├── firmware/       ファームウェア本体 (C/C++20, μT-Kernel 3)
-├── hooks/          Git hooks (pre-commit, pre-push)
-└── wsl.md          WSL セットアップ手順
+│   ├── apps/       micro:bit向けアプリケーション
+│   ├── components/ 共通ロジックとデバイスドライバ
+│   ├── kernel/     μT-Kernel 3
+│   ├── linker/     リンカスクリプト
+│   └── test/       Linux向けユニットテスト
+├── hooks/          Gitフック
+├── wsl.md          WSLセットアップ手順
+└── .github/        CI設定
 ```
