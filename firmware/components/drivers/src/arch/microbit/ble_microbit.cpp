@@ -54,11 +54,11 @@ struct BleConfig {
 
     struct Radio {
         static constexpr uint32_t Pcnf0 = (6U << RADIO_PCNF0_LFLEN_Pos) | (1U << RADIO_PCNF0_S0LEN_Pos)
-                                           | (2U << RADIO_PCNF0_S1LEN_Pos)
-                                           | (RADIO_PCNF0_PLEN_8bit << RADIO_PCNF0_PLEN_Pos);
+                                          | (2U << RADIO_PCNF0_S1LEN_Pos)
+                                          | (RADIO_PCNF0_PLEN_8bit << RADIO_PCNF0_PLEN_Pos);
         static constexpr uint32_t Pcnf1 = (37U << RADIO_PCNF1_MAXLEN_Pos) | (3U << RADIO_PCNF1_BALEN_Pos)
-                                           | (RADIO_PCNF1_ENDIAN_Little << RADIO_PCNF1_ENDIAN_Pos)
-                                           | (RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos);
+                                          | (RADIO_PCNF1_ENDIAN_Little << RADIO_PCNF1_ENDIAN_Pos)
+                                          | (RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos);
         static constexpr uint32_t CrcCnf
             = (3U << RADIO_CRCCNF_LEN_Pos) | (RADIO_CRCCNF_SKIPADDR_Skip << RADIO_CRCCNF_SKIPADDR_Pos);
         static constexpr uint32_t CrcPoly = 0x00065BU;
@@ -619,8 +619,9 @@ static bool transmit_on_channel(uint8_t channel_index) {
 static void snapshot_radio_status(void) {
     s_state.debug.radio.lastRadioState = NRF_RADIO->STATE;
     s_state.debug.radio.lastRadioEvents = (NRF_RADIO->EVENTS_READY ? 0x01U : 0U) | (NRF_RADIO->EVENTS_END ? 0x02U : 0U)
-                        | (NRF_RADIO->EVENTS_DISABLED ? 0x04U : 0U) | (NRF_RADIO->EVENTS_ADDRESS ? 0x08U : 0U)
-                        | (NRF_RADIO->EVENTS_PAYLOAD ? 0x10U : 0U);
+                                          | (NRF_RADIO->EVENTS_DISABLED ? 0x04U : 0U)
+                                          | (NRF_RADIO->EVENTS_ADDRESS ? 0x08U : 0U)
+                                          | (NRF_RADIO->EVENTS_PAYLOAD ? 0x10U : 0U);
     s_state.debug.radio.lastCrcStatus = NRF_RADIO->CRCSTATUS;
 }
 

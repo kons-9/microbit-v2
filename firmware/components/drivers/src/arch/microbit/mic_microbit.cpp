@@ -38,9 +38,8 @@ static nrf_saadc_value_t saadc_sample_once() {
         return 0;
     }
 
-    nrfx_saadc_channel_t channel
-        = NRFX_SAADC_DEFAULT_CHANNEL_SE(drivers::microbit::config::Microphone::Adc::Input,
-                                        drivers::microbit::config::Microphone::Adc::Channel);
+    nrfx_saadc_channel_t channel = NRFX_SAADC_DEFAULT_CHANNEL_SE(drivers::microbit::config::Microphone::Adc::Input,
+                                                                 drivers::microbit::config::Microphone::Adc::Channel);
     channel.channel_config.gain = drivers::microbit::config::Microphone::Adc::Gain;
     channel.channel_config.reference = drivers::microbit::config::Microphone::Adc::Reference;
     channel.channel_config.acq_time = drivers::microbit::config::Microphone::Adc::AcquisitionTime;
@@ -50,11 +49,10 @@ static nrf_saadc_value_t saadc_sample_once() {
         nrfx_saadc_uninit();
         return 0;
     }
-    if (auto err
-        = nrfx_saadc_simple_mode_set(drivers::microbit::config::Microphone::Adc::ChannelMask,
-                                      drivers::microbit::config::Microphone::Adc::Resolution,
-                                      drivers::microbit::config::Microphone::Adc::Oversample,
-                                      nullptr);
+    if (auto err = nrfx_saadc_simple_mode_set(drivers::microbit::config::Microphone::Adc::ChannelMask,
+                                              drivers::microbit::config::Microphone::Adc::Resolution,
+                                              drivers::microbit::config::Microphone::Adc::Oversample,
+                                              nullptr);
         err != 0) {
         LOG_E("saadc_simple_mode_set failed: %d", err);
         nrfx_saadc_uninit();

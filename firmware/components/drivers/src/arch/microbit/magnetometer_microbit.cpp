@@ -60,10 +60,11 @@ bool Magnetometer::read_registers(uint8_t reg, uint8_t *val, uint8_t len) {
 
 bool Magnetometer::init() {
     nrfx_twim_config_t config = NRFX_TWIM_DEFAULT_CONFIG(microbit::config::Magnetometer::Bus::SclPin,
-                                                          microbit::config::Magnetometer::Bus::SdaPin);
+                                                         microbit::config::Magnetometer::Bus::SdaPin);
     config.frequency = microbit::config::Magnetometer::Bus::Frequency;
 
-    if (auto err = nrfx_twim_init(&s_state.i2c.twim_instance, &config, nullptr, nullptr); err != 0 && err != -EALREADY) {
+    if (auto err = nrfx_twim_init(&s_state.i2c.twim_instance, &config, nullptr, nullptr);
+        err != 0 && err != -EALREADY) {
         LOG_E("I2C init failed: %d", err);
         return false;
     }

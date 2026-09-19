@@ -194,8 +194,10 @@ int32_t Ble::gap_advertise_start(ble::AddressType own_address_type, const ble::G
           static_cast<unsigned>(m_state.advertise.own_address.value[1]),
           static_cast<unsigned>(m_state.advertise.own_address.value[0]),
           static_cast<unsigned>(m_state.advertise.pdu_length));
-    logging::Logger::instance().hex_dump(
-        logging::LogLevel::Debug, "BLE", m_state.advertise.pdu_buffer, m_state.advertise.pdu_length);
+    logging::Logger::instance().hex_dump(logging::LogLevel::Debug,
+                                         "BLE",
+                                         m_state.advertise.pdu_buffer,
+                                         m_state.advertise.pdu_length);
 
     /* Advertising 開始 (interval の中間値を使用) */
     uint16_t interval = static_cast<uint16_t>((params->interval_min + params->interval_max) / 2);

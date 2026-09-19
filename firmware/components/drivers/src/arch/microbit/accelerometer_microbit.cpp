@@ -60,10 +60,11 @@ bool Accelerometer::read_registers(uint8_t reg, uint8_t *val, uint8_t len) {
 
 bool Accelerometer::init() {
     nrfx_twim_config_t config = NRFX_TWIM_DEFAULT_CONFIG(microbit::config::Accelerometer::Bus::SclPin,
-                                                          microbit::config::Accelerometer::Bus::SdaPin);
+                                                         microbit::config::Accelerometer::Bus::SdaPin);
     config.frequency = microbit::config::Accelerometer::Bus::Frequency;
 
-    if (auto err = nrfx_twim_init(&s_state.i2c.twim_instance, &config, nullptr, nullptr); err != 0 && err != -EALREADY) {
+    if (auto err = nrfx_twim_init(&s_state.i2c.twim_instance, &config, nullptr, nullptr);
+        err != 0 && err != -EALREADY) {
         LOG_E("I2C init failed: %d", err);
         return false;
     }
@@ -112,9 +113,12 @@ AccelerometerData Accelerometer::read() {
         return data;
     }
 
-    int16_t raw_x = static_cast<int16_t>((raw[1] << 8) | raw[0]) >> microbit::config::Accelerometer::Setup::RawValueShift;
-    int16_t raw_y = static_cast<int16_t>((raw[3] << 8) | raw[2]) >> microbit::config::Accelerometer::Setup::RawValueShift;
-    int16_t raw_z = static_cast<int16_t>((raw[5] << 8) | raw[4]) >> microbit::config::Accelerometer::Setup::RawValueShift;
+    int16_t raw_x
+        = static_cast<int16_t>((raw[1] << 8) | raw[0]) >> microbit::config::Accelerometer::Setup::RawValueShift;
+    int16_t raw_y
+        = static_cast<int16_t>((raw[3] << 8) | raw[2]) >> microbit::config::Accelerometer::Setup::RawValueShift;
+    int16_t raw_z
+        = static_cast<int16_t>((raw[5] << 8) | raw[4]) >> microbit::config::Accelerometer::Setup::RawValueShift;
 
     const auto range_index = static_cast<uint8_t>(m_state.current_range);
     data.m_x = raw_x * microbit::config::Accelerometer::ScaleFactor[range_index];
