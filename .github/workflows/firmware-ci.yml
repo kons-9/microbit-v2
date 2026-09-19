@@ -40,15 +40,7 @@ jobs:
       - name: build main
         working-directory: ./firmware
         run: |
-          make build
-      - name: build updater
-        working-directory: ./firmware
-        run: |
-          make build-updater
-      - name: build factory-test
-        working-directory: ./firmware
-        run: |
-          make build-factory-test
+          make build-all
 
   unit-test:
     runs-on: ubuntu-latest
