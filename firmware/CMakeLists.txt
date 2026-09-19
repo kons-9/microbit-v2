@@ -41,6 +41,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_definitions(${ARCH_DEFINITIONS})
 
+# recovery runs the shell directly from usermain(), so its initial task needs
+# enough stack for command parsing and printf/newlib formatting.
+if(APP_TARGET STREQUAL "recovery")
+    add_compile_definitions(INITTASK_STKSZ=4096)
+endif()
+
 # 外部フラグを適用
 if(EXTRA_C_FLAGS)
     separate_arguments(_c_flags UNIX_COMMAND "${EXTRA_C_FLAGS}")

@@ -64,8 +64,21 @@ class Led {
     void set_frame(const uint8_t bitmap[LED_ROWS]);
 
   private:
-    volatile uint8_t m_framebuf[LED_ROWS] = {};
-    uint8_t m_current_row = 0;
+    /*
+     * フレーム内容とスキャン位置は、表示更新とISRの都合で別々に変化する。
+     * 論理単位を分けておくことで、バッファ更新と行切り替えの状態を混同しない。
+     */
+    struct InnerState {
+        struct Frame {
+            volatile uint8_t buffer[LED_ROWS] = {};
+        } frame;
+
+        struct Scan {
+            uint8_t current_row = 0;
+        } scan;
+    };
+
+    InnerState m_state;
 };
 
 }  // namespace drivers

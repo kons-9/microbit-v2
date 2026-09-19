@@ -18,7 +18,7 @@
  * arch 実装がパケットを受信したとき、このコールバックで上位に通知する。
  * ble.cpp 側で登録する。
  */
-using BLEArchOnAdvertiseCallback = void (*)(const ble::DiscoveryDescriptor *descriptor);
+using BLEArchOnAdvertiseCallback = void (*)(const ble::DiscoveryDescriptor *descriptor, void *argument);
 
 /**
  * HW を初期化する
@@ -33,12 +33,14 @@ int32_t ble_arch_init(void);
  * @param window_625us    スキャンウィンドウ (0.625ms 単位)
  * @param is_passive      1=passive scan
  * @param on_advertise    ADV パケット受信時のコールバック (arch → ble.cpp)
+ * @param argument        コールバックに渡すユーザー引数
  * @return 0 on success
  */
 int32_t ble_arch_scan_start(uint16_t interval_625us,
                             uint16_t window_625us,
                             int32_t is_passive,
-                            BLEArchOnAdvertiseCallback on_advertise);
+                            BLEArchOnAdvertiseCallback on_advertise,
+                            void *argument);
 
 /**
  * スキャンを停止する

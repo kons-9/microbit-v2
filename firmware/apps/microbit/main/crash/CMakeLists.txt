@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 
-add_library(main_crash STATIC)
+add_library(main_crash OBJECT)
 
 target_sources(main_crash PRIVATE
     src/crash_handler.cpp
+    src/boot_check.cpp
 )
 
 target_include_directories(main_crash
@@ -19,7 +20,4 @@ target_link_libraries(main_crash
 )
 
 # Reset_Handlerのラップはmain applicationにだけ適用する。
-target_sources(main_crash INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/boot_check.cpp
-)
 target_link_options(main_crash INTERFACE -Wl,--wrap=Reset_Handler)

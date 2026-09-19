@@ -21,12 +21,28 @@ SECTIONS {
         . = ALIGN(8);
         __vector_org = .;
         *(.vector)
+    } >ROM
+
+    .init : {
+        KEEP(*(.init))
+    } >ROM
+
+    .text.app : {
         __start = .;
         *(.text)
         *(.text.*)
         *(.rodata)
         *(.rodata.*)
+
+        /* recovery does not call __libc_init_array(); retaining C++ init
+         * arrays pulls in the atexit/newlib runtime and exceeds this slot.
+         */
     } >ROM
+
+    .fini : {
+        KEEP(*(.fini))
+    } >ROM
+
     . = ALIGN(4);
     __data_org = .;
 

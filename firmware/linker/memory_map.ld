@@ -17,7 +17,8 @@ __settings_start   = 0x0007F000;  /* Settings page (4 KB) */
 __flash_end        = 0x00080000;  /* End of flash */
 
 /* ---- Flash FS regions ---- */
-__fs_log_start      = 0x00078000;  /* Flash FS log (16 KB, 4 pages) */
+__fs_log_ring_start = 0x00078000;  /* Flash FS log ring (12 KB, 3 pages) */
+__fs_log_fixed_start = 0x0007B000;  /* Flash FS fixed log (4 KB, 1 page) */
 __fs_settings_start = 0x0007C000;  /* Flash FS settings (4 KB, 1 page) */
 __fs_calib_start    = 0x0007D000;  /* Flash FS calibration (4 KB, 1 page) */
 

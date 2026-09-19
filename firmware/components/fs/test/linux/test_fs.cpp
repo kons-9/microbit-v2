@@ -23,14 +23,16 @@ struct FsFixture {
 /* ================================================================== */
 
 TEST_CASE_METHOD(FsFixture, "fs_get_name returns correct names", "[fs]") {
-    REQUIRE(std::strcmp(*file_system.get_name(fs::FileId::Log), "log") == 0);
+    REQUIRE(std::strcmp(*file_system.get_name(fs::FileId::LogRing), "log_ring") == 0);
+    REQUIRE(std::strcmp(*file_system.get_name(fs::FileId::LogFixed), "log_fixed") == 0);
     REQUIRE(std::strcmp(*file_system.get_name(fs::FileId::Settings), "settings") == 0);
     REQUIRE(std::strcmp(*file_system.get_name(fs::FileId::Calib), "calib") == 0);
     REQUIRE_FALSE(file_system.get_name(fs::FileId::Count).has_value());
 }
 
 TEST_CASE_METHOD(FsFixture, "fs_find_by_name resolves names", "[fs]") {
-    REQUIRE(*file_system.find_by_name("log") == fs::FileId::Log);
+    REQUIRE(*file_system.find_by_name("log_ring") == fs::FileId::LogRing);
+    REQUIRE(*file_system.find_by_name("log_fixed") == fs::FileId::LogFixed);
     REQUIRE(*file_system.find_by_name("settings") == fs::FileId::Settings);
     REQUIRE(*file_system.find_by_name("calib") == fs::FileId::Calib);
     REQUIRE_FALSE(file_system.find_by_name("nonexist").has_value());
@@ -42,10 +44,10 @@ TEST_CASE_METHOD(FsFixture, "fs_find_by_name resolves names", "[fs]") {
 
 TEST_CASE_METHOD(FsFixture, "Stream append and read back", "[fs][stream]") {
     const uint8_t data[] = {0xDE, 0xAD, 0xBE, 0xEF};
-    REQUIRE(file_system.append(fs::FileId::Log, data, sizeof(data)));
+    REQUIRE(file_system.append(fs::FileId::LogRing, data, sizeof(data)));
 
     uint8_t buf[4] = {};
-    size_t n = file_system.read(fs::FileId::Log, 0, buf, sizeof(buf));
+    size_t n = file_system.read(fs::FileId::LogRing, 0, buf, sizeof(buf));
     REQUIRE(n == 4);
     REQUIRE(std::memcmp(buf, data, 4) == 0);
 }
@@ -53,25 +55,25 @@ TEST_CASE_METHOD(FsFixture, "Stream append and read back", "[fs][stream]") {
 TEST_CASE_METHOD(FsFixture, "Stream multiple appends", "[fs][stream]") {
     uint32_t val1 = 0x11223344;
     uint32_t val2 = 0x55667788;
-    REQUIRE(file_system.append(fs::FileId::Log, &val1, sizeof(val1)));
-    REQUIRE(file_system.append(fs::FileId::Log, &val2, sizeof(val2)));
+    REQUIRE(file_system.append(fs::FileId::LogRing, &val1, sizeof(val1)));
+    REQUIRE(file_system.append(fs::FileId::LogRing, &val2, sizeof(val2)));
 
     uint32_t out = 0;
-    REQUIRE(file_system.read(fs::FileId::Log, 0, &out, sizeof(out)) == 4);
+    REQUIRE(file_system.read(fs::FileId::LogRing, 0, &out, sizeof(out)) == 4);
     REQUIRE(out == 0x11223344);
 
-    REQUIRE(file_system.read(fs::FileId::Log, 4, &out, sizeof(out)) == 4);
+    REQUIRE(file_system.read(fs::FileId::LogRing, 4, &out, sizeof(out)) == 4);
     REQUIRE(out == 0x55667788);
 }
 
 TEST_CASE_METHOD(FsFixture, "Stream erase clears data", "[fs][stream]") {
     uint32_t val = 0xAAAAAAAA;
-    file_system.append(fs::FileId::Log, &val, sizeof(val));
+    file_system.append(fs::FileId::LogRing, &val, sizeof(val));
 
-    file_system.erase(fs::FileId::Log);
+    file_system.erase(fs::FileId::LogRing);
 
     fs::FileInfo info;
-    file_system.get_info(fs::FileId::Log, &info);
+    file_system.get_info(fs::FileId::LogRing, &info);
     REQUIRE(info.used == 0);
 }
 
@@ -82,12 +84,12 @@ TEST_CASE_METHOD(FsFixture, "Stream wraps to next page", "[fs][stream]") {
 
     // 4回書くと4088近くになり、5回目で次ページへ
     for (int i = 0; i < 5; ++i) {
-        REQUIRE(file_system.append(fs::FileId::Log, chunk, sizeof(chunk)));
+        REQUIRE(file_system.append(fs::FileId::LogRing, chunk, sizeof(chunk)));
     }
 
     // 読み返し (最初のページの最初のチャンク)
     uint8_t read_buf[1024];
-    size_t n = file_system.read(fs::FileId::Log, 0, read_buf, sizeof(read_buf));
+    size_t n = file_system.read(fs::FileId::LogRing, 0, read_buf, sizeof(read_buf));
     REQUIRE(n == 1024);
     REQUIRE(read_buf[0] == 0xAB);
     REQUIRE(read_buf[1023] == 0xAB);
@@ -98,27 +100,28 @@ TEST_CASE_METHOD(FsFixture, "Ring buffer reads pages in sequence order", "[fs][s
 
     for (uint8_t marker = 1; marker <= 5; ++marker) {
         chunk[0] = marker;
-        REQUIRE(file_system.append(fs::FileId::Log, chunk, sizeof(chunk)));
+        REQUIRE(file_system.append(fs::FileId::LogRing, chunk, sizeof(chunk)));
     }
 
     uint8_t oldest = 0;
-    REQUIRE(file_system.read(fs::FileId::Log, 0, &oldest, sizeof(oldest)) == 1);
-    REQUIRE(oldest == 2);
+    REQUIRE(file_system.read(fs::FileId::LogRing, 0, &oldest, sizeof(oldest)) == 1);
+    // The ring buffer has three pages, so the first two records are overwritten.
+    REQUIRE(oldest == 3);
 }
 
 TEST_CASE_METHOD(FsFixture, "Stream rejects oversized append", "[fs][stream]") {
     // ページサイズ - ヘッダ = 4092。それを超えるデータは拒否
     uint8_t big[4093];
-    REQUIRE_FALSE(file_system.append(fs::FileId::Log, big, sizeof(big)));
+    REQUIRE_FALSE(file_system.append(fs::FileId::LogRing, big, sizeof(big)));
 }
 
 TEST_CASE_METHOD(FsFixture, "Ring buffer rejects wrong file type", "[fs][stream]") {
     uint8_t data = 0;
-    REQUIRE_FALSE(file_system.append(fs::FileId::Settings, &data, 1));
+    REQUIRE_FALSE(file_system.append(fs::FileId::LogFixed, &data, 1));
 }
 
 TEST_CASE_METHOD(FsFixture, "RingBufferFile implements io::Stream", "[fs][stream]") {
-    fs::RingBufferFile file(file_system, fs::FileId::Log);
+    fs::RingBufferFile file(file_system, fs::FileId::LogRing);
     const uint8_t data[] = {0x01, 0x02, 0x03};
     REQUIRE(file.write(data, sizeof(data)) == static_cast<int32_t>(sizeof(data)));
 
@@ -159,7 +162,7 @@ TEST_CASE_METHOD(FsFixture, "Block rejects out-of-bounds write", "[fs][block]") 
 
 TEST_CASE_METHOD(FsFixture, "Fixed file rejects wrong file type", "[fs][block]") {
     uint8_t data = 0;
-    REQUIRE_FALSE(file_system.block_write(fs::FileId::Log, 0, &data, 1));
+    REQUIRE_FALSE(file_system.block_write(fs::FileId::LogRing, 0, &data, 1));
 }
 
 TEST_CASE_METHOD(FsFixture, "FixedFile implements io::Stream", "[fs][block]") {
@@ -178,10 +181,15 @@ TEST_CASE_METHOD(FsFixture, "FixedFile implements io::Stream", "[fs][block]") {
 
 TEST_CASE_METHOD(FsFixture, "fs_get_info returns correct capacity", "[fs]") {
     fs::FileInfo info;
-    REQUIRE(file_system.get_info(fs::FileId::Log, &info));
-    REQUIRE(info.capacity == 4 * 4096);
+    REQUIRE(file_system.get_info(fs::FileId::LogRing, &info));
+    REQUIRE(info.capacity == 3 * 4096);
     REQUIRE(info.type == fs::FileType::RingBuffer);
-    REQUIRE(std::strcmp(info.name, "log") == 0);
+    REQUIRE(std::strcmp(info.name, "log_ring") == 0);
+
+    REQUIRE(file_system.get_info(fs::FileId::LogFixed, &info));
+    REQUIRE(info.capacity == 4096);
+    REQUIRE(info.type == fs::FileType::Fixed);
+    REQUIRE(std::strcmp(info.name, "log_fixed") == 0);
 
     REQUIRE(file_system.get_info(fs::FileId::Settings, &info));
     REQUIRE(info.capacity == 4096);

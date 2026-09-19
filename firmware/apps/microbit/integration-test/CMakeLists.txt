@@ -24,6 +24,9 @@ target_link_libraries(app_main.elf
 
 # リンカスクリプト (SoftDeviceなしのapp領域)
 set(LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/linker/app.ld)
+set_target_properties(app_main.elf PROPERTIES
+    LINK_DEPENDS "${LINKER_SCRIPT};${CMAKE_SOURCE_DIR}/linker/memory_map.ld"
+)
 target_link_options(app_main.elf PRIVATE
     -L${CMAKE_SOURCE_DIR}/linker
     -T${LINKER_SCRIPT}

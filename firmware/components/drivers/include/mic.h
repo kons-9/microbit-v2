@@ -47,7 +47,11 @@ class Microphone {
     uint8_t get_level();
 
   private:
-    bool m_enabled = false;
+    struct InnerState {
+        bool enabled = false;
+    };
+
+    InnerState m_state;
 };
 
 }  // namespace drivers

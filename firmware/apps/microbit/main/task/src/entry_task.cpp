@@ -37,6 +37,7 @@ bool EntryTask::start() {
     if (!m_task.create(entry, task_config)) {
         return false;
     }
+
     if (!m_task.start()) {
         m_task.terminate();
         return false;
@@ -50,9 +51,13 @@ void EntryTask::entry(void *argument) {
 
 void EntryTask::run() {
     m_config.drivers.uart.init();
+
     logging::Logger::instance().init(logging::LogLevel::Debug, m_config.drivers.uart);
 
+    LOG_I("starting main app...");
+
     m_config.drivers.button.init();
+
     if (m_config.drivers.button.is_pressed(drivers::ButtonId::A)) {
         LOG_I("A pressed: entering recovery mode");
         sysconfig::reboot(sysconfig::BOOT_RECOVERY);
@@ -65,7 +70,7 @@ void EntryTask::run() {
         return;
     }
 
-    logging::Logger::instance().add_stream(m_config.log_file);
+    logging::Logger::instance().add_stream(m_config.log_ring);
 
     if (!m_advertise_task.start()) {
         LOG_E("BLE advertising task create/start failed");

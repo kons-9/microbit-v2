@@ -26,12 +26,14 @@ struct Drivers {
 struct Config {
     Drivers &drivers;
     fs::FileSystem file_system;
-    fs::RingBufferFile log_file;
+    fs::RingBufferFile log_ring;
+    fs::FixedFile log_fixed;
 
     explicit Config(Drivers &drivers)
         : drivers(drivers)
         , file_system(drivers.flash)
-        , log_file(file_system, fs::FileId::Log) {
+        , log_ring(file_system, fs::FileId::LogRing)
+        , log_fixed(file_system, fs::FileId::LogFixed) {
     }
 };
 

@@ -57,9 +57,10 @@ struct FileTableEntry {
 /* ================================================================== */
 
 static constexpr FileTableEntry FILE_TABLE[] = {
-    {FileId::Log, FileType::RingBuffer, "log", 0, 4},       // 16KB
-    {FileId::Settings, FileType::Fixed, "settings", 0, 1},  //  4KB
-    {FileId::Calib, FileType::Fixed, "calib", 0, 1},        //  4KB
+    {FileId::LogRing, FileType::RingBuffer, "log_ring", 0, 3},  // 12KB
+    {FileId::LogFixed, FileType::Fixed, "log_fixed", 0, 1},     //  4KB
+    {FileId::Settings, FileType::Fixed, "settings", 0, 1},      //  4KB
+    {FileId::Calib, FileType::Fixed, "calib", 0, 1},            //  4KB
 };
 
 static_assert(sizeof(FILE_TABLE) / sizeof(FILE_TABLE[0]) == static_cast<size_t>(FileId::Count));
@@ -183,7 +184,8 @@ FileSystem::FileSystem(drivers::Flash &flash)
 
 int32_t FileSystem::init() {
     // ベースアドレスを設定
-    base_address_[file_index(FileId::Log)] = sysconfig::flash_layout::log_base_address();
+    base_address_[file_index(FileId::LogRing)] = sysconfig::flash_layout::log_ring_base_address();
+    base_address_[file_index(FileId::LogFixed)] = sysconfig::flash_layout::log_fixed_base_address();
     base_address_[file_index(FileId::Settings)] = sysconfig::flash_layout::settings_base_address();
     base_address_[file_index(FileId::Calib)] = sysconfig::flash_layout::calib_base_address();
 

@@ -8,7 +8,7 @@
  * - Observer (passive scan): 位置推定の受信側
  * - Broadcaster (advertising): ビーコン発信側
  *
- * @pre ble::init() を呼んでからスキャン / アドバタイズを開始すること
+ * @pre drivers::Ble::init() を呼んでからスキャン / アドバタイズを開始すること
  */
 
 #include <cstdint>
@@ -113,57 +113,6 @@ struct GapEvent {
  */
 using GapEventCallback = int32_t (*)(GapEvent *event, void *argument);
 
-/* ==================================================================
- * Discovery (Scanner / Observer) API
- * ================================================================== */
-
-/**
- * BLE サブシステムを初期化する
- *
- * @pre 他の BLE 関数を呼ぶ前に必ず呼ぶこと
- * @post BLE ハードウェアが受信/送信可能な状態になる
- * @return 0 on success
- */
-int32_t init(void);
-
-/**
- * スキャン (Discovery) を開始する
- *
- * @pre  init() が成功していること
- * @pre  スキャン中でないこと (gap_discovery_active() == 0)
- * @post スキャンが開始され、パケット受信のたびに callback が呼ばれる
- *
- * @param own_address_type  自局アドレス種別
- * @param duration_ms       スキャン継続時間 [ms], 0=無期限
- * @param params            スキャンパラメータ
- * @param callback          イベントコールバック
- * @param callback_argument コールバック引数
- * @return 0 on success, Error on failure
- */
-int32_t gap_discover(AddressType own_address_type,
-                     int32_t duration_ms,
-                     const DiscoveryParams *params,
-                     GapEventCallback callback,
-                     void *callback_argument);
-
-/**
- * スキャンを中止する
- *
- * @post スキャンが停止し、disc_complete コールバックが呼ばれる
- * @return 0 on success
- */
-int32_t gap_discover_cancel(void);
-
-/**
- * スキャン中かどうかを取得する
- * @return 1=scanning, 0=idle
- */
-int32_t gap_discovery_active(void);
-
-/* ==================================================================
- * Advertise (Broadcaster) API
- * ================================================================== */
-
 /** AD データの最大長 (BLE 4.x 仕様: 31 bytes) */
 constexpr uint8_t ADVERTISE_DATA_MAX_LENGTH = 31;
 
@@ -246,46 +195,89 @@ struct AdvertiseDebugStatus {
     uint32_t ficr_deviceid1;
 };
 
-/**
- * Advertising データを設定する
- *
- * @pre  init() が成功していること
- * @post データが内部バッファにコピーされ、次回 gap_advertise_start() で使用される
- *
- * @param data  AD 構造体の配列 (AD Length + AD Type + AD Data の繰り返し)
- * @param length データ長 (最大 ADVERTISE_DATA_MAX_LENGTH)
- * @return 0 on success
- */
-int32_t gap_advertise_set_data(const uint8_t *data, uint8_t length);
-
-/**
- * Advertising を開始する
- *
- * @pre  init() が成功していること
- * @pre  gap_advertise_set_data() でデータが設定済みであること
- * @post 指定間隔で ch37/38/39 に ADV パケットが送信される
- *
- * @param own_address_type  自局アドレス種別
- * @param params            Advertising パラメータ
- * @return 0 on success, Error on failure
- */
-int32_t gap_advertise_start(AddressType own_address_type, const GapAdvertiseParams *params);
-
-/** AdvertisingのRADIOデバッグ状態を取得する */
-int32_t gap_advertise_get_debug_status(AdvertiseDebugStatus *status);
-
-/**
- * Advertising を停止する
- *
- * @post Advertising が停止する
- * @return 0 on success
- */
-int32_t gap_advertise_stop(void);
-
-/**
- * Advertising 中かどうかを取得する
- * @return 1=advertising, 0=idle
- */
-int32_t gap_advertise_active(void);
-
 }  // namespace ble
+
+namespace drivers {
+
+/**
+ * @brief BLE GAP ドライバ
+ *
+ * スキャンと Advertising の状態をインスタンスごとに保持する。
+ * BLE RADIO はハードウェア上1つなので、同時に使用するインスタンスは
+ * 1つにする。
+ */
+class Ble {
+  public:
+    Ble() = default;
+    Ble(const Ble &) = delete;
+    Ble &operator=(const Ble &) = delete;
+    Ble(Ble &&) = delete;
+    Ble &operator=(Ble &&) = delete;
+
+    /** BLE サブシステムを初期化する */
+    int32_t init();
+
+    /** スキャンを開始する */
+    int32_t gap_discover(ble::AddressType own_address_type,
+                         int32_t duration_ms,
+                         const ble::DiscoveryParams *params,
+                         ble::GapEventCallback callback,
+                         void *callback_argument);
+
+    /** スキャンを中止する */
+    int32_t gap_discover_cancel();
+
+    /** スキャン中かどうかを取得する */
+    int32_t gap_discovery_active() const;
+
+    /** Advertising データを設定する */
+    int32_t gap_advertise_set_data(const uint8_t *data, uint8_t length);
+
+    /** Advertising を開始する */
+    int32_t gap_advertise_start(ble::AddressType own_address_type, const ble::GapAdvertiseParams *params);
+
+    /** AdvertisingのRADIOデバッグ状態を取得する */
+    int32_t gap_advertise_get_debug_status(ble::AdvertiseDebugStatus *status) const;
+
+    /** Advertising を停止する */
+    int32_t gap_advertise_stop();
+
+    /** Advertising 中かどうかを取得する */
+    int32_t gap_advertise_active() const;
+
+  private:
+    static constexpr size_t PDU_BUFFER_SIZE = 3 + 6 + ble::ADVERTISE_DATA_MAX_LENGTH;
+
+    /*
+     * BLEのスキャン/Advertisingは非同期に動作し、コールバック・送信データ・
+     * PDUバッファを複数のAPI呼び出しの間で保持する必要がある。これらを
+     * InnerStateにまとめることで、公開APIに属さないドライバ内部状態を明示する。
+     */
+    struct DiscoveryState {
+        int32_t scanning = 0;
+        ble::GapEventCallback callback = nullptr;
+        void *callback_argument = nullptr;
+    };
+
+    struct AdvertiseState {
+        int32_t advertising = 0;
+        uint8_t advertise_data[ble::ADVERTISE_DATA_MAX_LENGTH] = {};
+        uint8_t advertise_data_length = 0;
+        ble::Address own_address = {};
+        uint8_t pdu_buffer[PDU_BUFFER_SIZE] = {};
+        uint8_t pdu_length = 0;
+    };
+
+    struct InnerState {
+        DiscoveryState discovery;
+        AdvertiseState advertise;
+    };
+
+    static void on_advertise_received(const ble::DiscoveryDescriptor *descriptor, void *argument);
+    void handle_advertise_received(const ble::DiscoveryDescriptor *descriptor);
+    void build_advertise_pdu(ble::AdvertisePduType advertise_type, uint8_t tx_add);
+
+    InnerState m_state;
+};
+
+}  // namespace drivers

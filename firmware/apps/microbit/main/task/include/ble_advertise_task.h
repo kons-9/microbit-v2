@@ -5,6 +5,8 @@
  * @brief メインアプリケーションのBLE Advertisingタスク
  */
 
+#include "ble.h"
+
 #include <utkernel/task>
 
 namespace app::task {
@@ -32,6 +34,7 @@ class BleAdvertiseTask {
     void run();
 
     static BleAdvertiseTask s_instance;
+    drivers::Ble m_ble;
     utkernel::task m_task;
 };
 

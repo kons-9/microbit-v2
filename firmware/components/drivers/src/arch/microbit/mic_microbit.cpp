@@ -8,6 +8,7 @@
  */
 
 #include "mic.h"
+#include "microbit_driver_config.h"
 
 #define LOG_TAG "MIC"
 #include "log.h"
@@ -15,10 +16,21 @@
 #include "nrf_gpio.h"
 #include "nrfx_saadc.h"
 
-static constexpr uint32_t MIC_IN_PIN = NRF_GPIO_PIN_MAP(0, 5);
-static constexpr uint32_t RUN_MIC_PIN = NRF_GPIO_PIN_MAP(0, 20);
+namespace {
 
-static nrf_saadc_value_t s_sample_buffer[1];
+/*
+ * SAADCが変換中に参照するEasyDMAバッファは、変換完了まで生存して
+ * いなければならない。公開APIの状態ではないためInnerStateにまとめる。
+ */
+struct InnerState {
+    struct Adc {
+        nrf_saadc_value_t sample_buffer[1] = {};
+    } adc;
+};
+
+static InnerState s_state{};
+
+}  // namespace
 
 static nrf_saadc_value_t saadc_sample_once() {
     if (auto err = nrfx_saadc_init(NRFX_SAADC_DEFAULT_CONFIG_IRQ_PRIORITY); err != 0) {
@@ -26,10 +38,12 @@ static nrf_saadc_value_t saadc_sample_once() {
         return 0;
     }
 
-    nrfx_saadc_channel_t channel = NRFX_SAADC_DEFAULT_CHANNEL_SE(NRF_SAADC_INPUT_AIN3, 0);
-    channel.channel_config.gain = NRF_SAADC_GAIN1_4;
-    channel.channel_config.reference = NRF_SAADC_REFERENCE_VDD4;
-    channel.channel_config.acq_time = NRF_SAADC_ACQTIME_10US;
+    nrfx_saadc_channel_t channel
+        = NRFX_SAADC_DEFAULT_CHANNEL_SE(drivers::microbit::config::Microphone::Adc::Input,
+                                        drivers::microbit::config::Microphone::Adc::Channel);
+    channel.channel_config.gain = drivers::microbit::config::Microphone::Adc::Gain;
+    channel.channel_config.reference = drivers::microbit::config::Microphone::Adc::Reference;
+    channel.channel_config.acq_time = drivers::microbit::config::Microphone::Adc::AcquisitionTime;
 
     if (auto err = nrfx_saadc_channel_config(&channel); err != 0) {
         LOG_E("saadc_channel_config failed: %d", err);
@@ -37,13 +51,16 @@ static nrf_saadc_value_t saadc_sample_once() {
         return 0;
     }
     if (auto err
-        = nrfx_saadc_simple_mode_set((1U << 0), NRF_SAADC_RESOLUTION_10BIT, NRF_SAADC_OVERSAMPLE_DISABLED, nullptr);
+        = nrfx_saadc_simple_mode_set(drivers::microbit::config::Microphone::Adc::ChannelMask,
+                                      drivers::microbit::config::Microphone::Adc::Resolution,
+                                      drivers::microbit::config::Microphone::Adc::Oversample,
+                                      nullptr);
         err != 0) {
         LOG_E("saadc_simple_mode_set failed: %d", err);
         nrfx_saadc_uninit();
         return 0;
     }
-    if (auto err = nrfx_saadc_buffer_set(s_sample_buffer, 1); err != 0) {
+    if (auto err = nrfx_saadc_buffer_set(s_state.adc.sample_buffer, 1); err != 0) {
         LOG_E("saadc_buffer_set failed: %d", err);
         nrfx_saadc_uninit();
         return 0;
@@ -55,7 +72,7 @@ static nrf_saadc_value_t saadc_sample_once() {
         return 0;
     }
 
-    nrf_saadc_value_t result = s_sample_buffer[0];
+    nrf_saadc_value_t result = s_state.adc.sample_buffer[0];
 
     nrfx_saadc_uninit();
 
@@ -65,47 +82,47 @@ static nrf_saadc_value_t saadc_sample_once() {
 namespace drivers {
 
 void Microphone::init() {
-    nrf_gpio_cfg_output(RUN_MIC_PIN);
-    nrf_gpio_pin_clear(RUN_MIC_PIN);
-    m_enabled = false;
+    nrf_gpio_cfg_output(microbit::config::Microphone::RunPin);
+    nrf_gpio_pin_clear(microbit::config::Microphone::RunPin);
+    m_state.enabled = false;
     LOG_D("init: RUN_MIC=P0.20, MIC_IN=P0.05(AIN3)");
 }
 
 void Microphone::enable() {
-    nrf_gpio_pin_set(RUN_MIC_PIN);
-    m_enabled = true;
+    nrf_gpio_pin_set(microbit::config::Microphone::RunPin);
+    m_state.enabled = true;
     LOG_D("enabled");
 }
 
 void Microphone::disable() {
-    nrf_gpio_pin_clear(RUN_MIC_PIN);
-    m_enabled = false;
+    nrf_gpio_pin_clear(microbit::config::Microphone::RunPin);
+    m_state.enabled = false;
     LOG_D("disabled");
 }
 
 bool Microphone::is_enabled() const {
-    return m_enabled;
+    return m_state.enabled;
 }
 
 uint16_t Microphone::read() {
-    if (!m_enabled) {
+    if (!m_state.enabled) {
         return 0;
     }
 
     auto sample = saadc_sample_once();
 
-    if (sample < 0) {
-        sample = 0;
+    if (sample < microbit::config::Microphone::Adc::MinimumValue) {
+        sample = microbit::config::Microphone::Adc::MinimumValue;
     }
-    if (sample > 1023) {
-        sample = 1023;
+    if (sample > microbit::config::Microphone::Adc::MaximumValue) {
+        sample = microbit::config::Microphone::Adc::MaximumValue;
     }
 
     return static_cast<uint16_t>(sample);
 }
 
 uint8_t Microphone::get_level() {
-    return static_cast<uint8_t>(read() >> 2);
+    return static_cast<uint8_t>(read() >> microbit::config::Microphone::Adc::LevelShift);
 }
 
 }  // namespace drivers

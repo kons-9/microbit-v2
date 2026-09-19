@@ -27,10 +27,11 @@ enum class Error : uint8_t {
 };
 
 enum class FileId : uint8_t {
-    Log = 0,
-    Settings = 1,
-    Calib = 2,
-    Count = 3,
+    LogRing = 0,
+    LogFixed = 1,
+    Settings = 2,
+    Calib = 3,
+    Count = 4,
 };
 
 enum class FileType : uint8_t {

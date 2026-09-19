@@ -10,8 +10,6 @@
 #include "integration_test.h"
 
 #include "log.h"
-#include "shell.h"
-
 #include <utkernel/task>
 
 namespace {
@@ -22,7 +20,7 @@ utkernel::task s_main_task;
 
 void shell_task(void *) {
     for (;;) {
-        shell::poll();
+        s_context.shell.poll();
         utkernel::task::sleep_for(10);
     }
 }

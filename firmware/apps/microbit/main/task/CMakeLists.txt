@@ -10,6 +10,8 @@ target_sources(main_task PRIVATE
 target_include_directories(main_task
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
 target_link_libraries(main_task

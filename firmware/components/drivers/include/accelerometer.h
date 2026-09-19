@@ -66,7 +66,11 @@ class Accelerometer {
     bool write_register(uint8_t reg, uint8_t val);
     bool read_registers(uint8_t reg, uint8_t *val, uint8_t len);
 
-    AccelerometerRange m_current_range = AccelerometerRange::G2;
+    struct InnerState {
+        AccelerometerRange current_range = AccelerometerRange::G2;
+    };
+
+    InnerState m_state;
 };
 
 }  // namespace drivers

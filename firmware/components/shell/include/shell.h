@@ -13,6 +13,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstdarg>
 
 #include "fs.h"
 
@@ -26,8 +27,10 @@ namespace shell {
 /*  Types                                                             */
 /* ================================================================== */
 
+class Shell;
+
 /** コマンドハンドラ関数型 */
-using CmdHandler = void (*)(int32_t argc, const char *const *argv);
+using CmdHandler = void (*)(Shell &shell, int32_t argc, const char *const *argv);
 
 /** シェルの操作モード */
 enum class Mode : uint8_t {
@@ -42,46 +45,74 @@ struct Command {
     CmdHandler handler; /**< 実行関数 */
 };
 
-/* ================================================================== */
-/*  API                                                               */
-/* ================================================================== */
-
 /**
- * @brief シェルを初期化する
- * @param stream      入出力ストリーム (UART 等)
- * @param extra_cmds  追加コマンドテーブル (NULLで組み込みのみ)
- * @param extra_count 追加コマンド数
- */
-void init(io::Stream &stream,
-          fs::FileSystem &file_system,
-          const Command *extra_cmds,
-          uint8_t extra_count,
-          Mode mode = Mode::ReadWrite);
-
-/**
- * @brief 1文字をシェルに入力する (UART RX割り込みから呼ぶ)
- * @param ch 受信文字
+ * @brief シェル本体
  *
- * 改行を検出するとコマンドをディスパッチする。
+ * 入力状態や出力先をインスタンスごとに保持する。
  */
-void feed_char(char ch);
+class Shell {
+  public:
+    Shell() = default;
 
-/**
- * @brief メインループから定期的に呼ぶ (ポーリング方式の場合)
- *
- * UART RX バッファからまとめて読み出し → FeedChar に渡す。
- */
-void poll(void);
+    void init(io::Stream &stream,
+              fs::FileSystem &file_system,
+              const Command *extra_cmds,
+              uint8_t extra_count,
+              Mode mode = Mode::ReadWrite);
 
-/**
- * @brief シェルに文字列を出力する (応答用)
- * @param str NULL終端文字列
- */
-void puts(const char *str);
+    void feed_char(char ch);
+    void poll();
+    void puts(const char *str);
+    void printf(const char *fmt, ...);
 
-/**
- * @brief シェルにフォーマット出力する
- */
-void printf(const char *fmt, ...);
+  private:
+    static constexpr size_t LINE_BUF_SIZE = 128;
+    static constexpr size_t RX_BUF_SIZE = 32;
+    static constexpr size_t FILE_BUF_SIZE = 256;
+    static constexpr size_t FORMAT_BUF_SIZE = 256;
+    static constexpr size_t MAX_ARGS = 8;
+    static constexpr char PROMPT[] = "> ";
+
+    enum class BuiltinId : uint8_t {
+        Help,
+        List,
+        Cat,
+        Erase,
+    };
+
+    struct BuiltinCommand {
+        const char *name;
+        const char *help;
+        BuiltinId id;
+    };
+
+    static constexpr BuiltinCommand BUILTIN_COMMANDS[] = {
+        {"help", "Show available commands", BuiltinId::Help},
+        {"ls", "List flash files", BuiltinId::List},
+        {"cat", "cat <file> [--hex] - Read file", BuiltinId::Cat},
+        {"erase", "erase <file> - Erase file", BuiltinId::Erase},
+    };
+
+    void dispatch_line();
+    void vprintf(const char *fmt, va_list ap);
+    void run_builtin(BuiltinId id, int32_t argc, const char *const *argv);
+    void cmd_help();
+    void cmd_ls();
+    void cmd_cat(int32_t argc, const char *const *argv);
+    void cmd_erase(int32_t argc, const char *const *argv);
+
+    char line_buf_[LINE_BUF_SIZE];
+    size_t line_pos_;
+    bool ignore_lf_;
+    uint8_t rx_buf_[RX_BUF_SIZE];
+    uint8_t file_buf_[FILE_BUF_SIZE];
+    char format_buf_[FORMAT_BUF_SIZE];
+
+    const Command *extra_cmds_;
+    uint8_t extra_count_;
+    io::Stream *stream_;
+    fs::FileSystem *file_system_;
+    Mode mode_;
+};
 
 }  // namespace shell

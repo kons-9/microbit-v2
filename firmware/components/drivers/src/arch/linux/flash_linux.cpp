@@ -12,7 +12,7 @@ namespace drivers {
 namespace {
 
 constexpr size_t VIRTUAL_FLASH_SIZE = 64 * 1024;
-constexpr uint32_t VIRTUAL_FLASH_BASE = sysconfig::flash_layout::LOG_BASE_ADDRESS;
+constexpr uint32_t VIRTUAL_FLASH_BASE = sysconfig::flash_layout::LOG_RING_BASE_ADDRESS;
 constexpr uint32_t PAGE_SIZE = 4096;
 
 uint8_t s_virtual_flash[VIRTUAL_FLASH_SIZE];

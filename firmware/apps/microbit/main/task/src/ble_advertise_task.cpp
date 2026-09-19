@@ -37,17 +37,17 @@ static constexpr uint8_t ADVERTISE_DATA[] = {
     'R',
 };
 
-static void log_debug_status() {
+static void log_debug_status(drivers::Ble &ble_driver) {
     ble::AdvertiseDebugStatus status = {};
-    if (ble::gap_advertise_get_debug_status(&status) != 0) {
+    if (ble_driver.gap_advertise_get_debug_status(&status) != 0) {
         LOG_E("failed to get advertising debug status");
         return;
     }
 
-    LOG_I("advertising=%s interval=%u ms",
-          ble::gap_advertise_active() ? "on" : "off",
+    LOG_D("advertising=%s interval=%u ms",
+          ble_driver.gap_advertise_active() ? "on" : "off",
           static_cast<unsigned>(ADVERTISING_INTERVAL_MS));
-    LOG_I("adv dbg timer=%lu events=%lu attempts=%lu complete=%lu timeout=%lu error=%lu pdu_len=%lu timer_cc=%lu",
+    LOG_D("adv dbg timer=%lu events=%lu attempts=%lu complete=%lu timeout=%lu error=%lu pdu_len=%lu timer_cc=%lu",
           static_cast<unsigned long>(status.timer_interrupt_count),
           static_cast<unsigned long>(status.advertise_event_count),
           static_cast<unsigned long>(status.tx_attempt_count),
@@ -56,35 +56,35 @@ static void log_debug_status() {
           static_cast<unsigned long>(status.tx_error_count),
           static_cast<unsigned long>(status.pdu_length),
           static_cast<unsigned long>(status.timer_compare));
-    LOG_I("adv dbg last ch=%lu freq=%lu state=%lx events=%lx crc=%lu",
+    LOG_D("adv dbg last ch=%lu freq=%lu state=%lx events=%lx crc=%lu",
           static_cast<unsigned long>(status.last_channel),
           static_cast<unsigned long>(status.last_frequency),
           static_cast<unsigned long>(status.last_radio_state),
           static_cast<unsigned long>(status.last_radio_events),
           static_cast<unsigned long>(status.last_crcstatus));
-    LOG_I("radio cfg mode=%lx pcnf0=%lx pcnf1=%lx base0=%lx prefix0=%lx",
+    LOG_D("radio cfg mode=%lx pcnf0=%lx pcnf1=%lx base0=%lx prefix0=%lx",
           static_cast<unsigned long>(status.radio_mode),
           static_cast<unsigned long>(status.radio_pcnf0),
           static_cast<unsigned long>(status.radio_pcnf1),
           static_cast<unsigned long>(status.radio_base0),
           static_cast<unsigned long>(status.radio_prefix0));
-    LOG_I("radio cfg crccnf=%lx crcpoly=%lx crcinit=%lx txpower=%lx tifs=%lu shorts=%lx",
+    LOG_D("radio cfg crccnf=%lx crcpoly=%lx crcinit=%lx txpower=%lx tifs=%lu shorts=%lx",
           static_cast<unsigned long>(status.radio_crccnf),
           static_cast<unsigned long>(status.radio_crcpoly),
           static_cast<unsigned long>(status.radio_crcinit),
           static_cast<unsigned long>(status.radio_txpower),
           static_cast<unsigned long>(status.radio_tifs),
           static_cast<unsigned long>(status.radio_shorts));
-    LOG_I("radio cfg packetptr=%lx txaddress=%lx whiteiv=%lx",
+    LOG_D("radio cfg packetptr=%lx txaddress=%lx whiteiv=%lx",
           static_cast<unsigned long>(status.radio_packetptr),
           static_cast<unsigned long>(status.radio_txaddress),
           static_cast<unsigned long>(status.radio_datawhiteiv));
-    LOG_I("radio live power=%lx freq=%lu rxaddresses=%lx mismatch=%lx",
+    LOG_D("radio live power=%lx freq=%lu rxaddresses=%lx mismatch=%lx",
           static_cast<unsigned long>(status.radio_power),
           static_cast<unsigned long>(status.radio_frequency),
           static_cast<unsigned long>(status.radio_rxaddresses),
           static_cast<unsigned long>(status.radio_config_mismatch));
-    LOG_I("ficr part=%lx variant=%lx package=%lx ram=%lx flash=%lx deviceid=%lx:%lx",
+    LOG_D("ficr part=%lx variant=%lx package=%lx ram=%lx flash=%lx deviceid=%lx:%lx",
           static_cast<unsigned long>(status.ficr_part),
           static_cast<unsigned long>(status.ficr_variant),
           static_cast<unsigned long>(status.ficr_package),
@@ -128,14 +128,14 @@ void BleAdvertiseTask::entry(void *argument) {
 }
 
 void BleAdvertiseTask::run() {
-    auto result = ble::init();
+    auto result = m_ble.init();
     if (result != 0) {
         LOG_E("ble init failed: %ld", static_cast<long>(result));
         utkernel::task::sleep_forever();
         return;
     }
 
-    result = ble::gap_advertise_set_data(ADVERTISE_DATA, sizeof(ADVERTISE_DATA));
+    result = m_ble.gap_advertise_set_data(ADVERTISE_DATA, sizeof(ADVERTISE_DATA));
     if (result != 0) {
         LOG_E("set advertising data failed: %ld", static_cast<long>(result));
         utkernel::task::sleep_forever();
@@ -147,7 +147,7 @@ void BleAdvertiseTask::run() {
     params.interval_max = params.interval_min;
     params.advertise_type = ble::AdvertisePduType::ConnectableUndirected;
 
-    result = ble::gap_advertise_start(ble::AddressType::Random, &params);
+    result = m_ble.gap_advertise_start(ble::AddressType::Random, &params);
     if (result != 0) {
         LOG_E("advertising start failed: %ld", static_cast<long>(result));
         utkernel::task::sleep_forever();
@@ -158,7 +158,7 @@ void BleAdvertiseTask::run() {
     logging::Logger::instance().hex_dump(logging::LogLevel::Info, LOG_TAG, ADVERTISE_DATA, sizeof(ADVERTISE_DATA));
 
     for (;;) {
-        log_debug_status();
+        log_debug_status(m_ble);
         utkernel::task::sleep_for(1000);
     }
 }

@@ -27,82 +27,113 @@
 #include <cstring>
 
 /* ==================================================================
- * 定数
+ * Configuration
  * ================================================================== */
 
-/**
- * BLE Advertising チャネルの周波数テーブル
- *
- * nRF52 の FREQUENCY レジスタは「2400MHz + value」の形式。
- *   ch37 = 2402 MHz → FREQUENCY = 2
- *   ch38 = 2426 MHz → FREQUENCY = 26
- *   ch39 = 2480 MHz → FREQUENCY = 80
+/*
+ * BLEの通信仕様、RADIOレジスタ、タイミングを論理単位で分ける。
+ * これらは実行中に変化しないためconstexprとし、InnerStateとは分離する。
  */
-static const uint8_t ADV_CHANNEL_FREQUENCY[3] = {2, 26, 80};
+struct BleConfig {
+    struct Packet {
+        static constexpr uint32_t RxBufferSize = 64;
+        static constexpr uint32_t TxBufferSize = 64;
+        static constexpr uint32_t MaxPayloadLength = 37;
+    };
 
-/**
- * Data Whitening の初期値 (チャネル番号)
- *
- * nRF52 では DATAWHITEIV レジスタに bit[6]=1 | channel_number を設定する。
- */
-static const uint8_t ADV_CHANNEL_NUMBER[3] = {37, 38, 39};
+    struct Advertising {
+        static constexpr uint32_t AccessAddress = 0x8E89BED6U;
+        static constexpr uint32_t ChannelCount = 3;
 
-/**
- * BLE Advertising の Access Address (固定値)
- *
- * nRF52では次のように分割して設定する:
- *   BASE0   = 0x89BED600
- *   PREFIX0 = 0x8E
- */
-#define BLE_ADV_ACCESS_ADDRESS 0x8E89BED6U
+        /* FREQUENCY: 2400MHz + value (ch37=2402, ch38=2426, ch39=2480) */
+        static constexpr uint8_t ChannelFrequency[] = {2, 26, 80};
 
-/** 受信バッファサイズ (PDU最大39B + S0/LENGTH + 余裕) */
-#define RX_BUFFER_SIZE 64
+        /* DATAWHITEIV: channel number (hardware readback includes bit 6). */
+        static constexpr uint8_t ChannelNumber[] = {37, 38, 39};
+    };
 
-/** 送信バッファサイズ */
-#define TX_BUFFER_SIZE 64
+    struct Radio {
+        static constexpr uint32_t Pcnf0 = (6U << RADIO_PCNF0_LFLEN_Pos) | (1U << RADIO_PCNF0_S0LEN_Pos)
+                                           | (2U << RADIO_PCNF0_S1LEN_Pos)
+                                           | (RADIO_PCNF0_PLEN_8bit << RADIO_PCNF0_PLEN_Pos);
+        static constexpr uint32_t Pcnf1 = (37U << RADIO_PCNF1_MAXLEN_Pos) | (3U << RADIO_PCNF1_BALEN_Pos)
+                                           | (RADIO_PCNF1_ENDIAN_Little << RADIO_PCNF1_ENDIAN_Pos)
+                                           | (RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos);
+        static constexpr uint32_t CrcCnf
+            = (3U << RADIO_CRCCNF_LEN_Pos) | (RADIO_CRCCNF_SKIPADDR_Skip << RADIO_CRCCNF_SKIPADDR_Pos);
+        static constexpr uint32_t CrcPoly = 0x00065BU;
+        static constexpr uint32_t CrcInit = 0x00555555U;
+        static constexpr uint32_t TifsUs = 150;
+        static constexpr uint32_t RxShorts = RADIO_SHORTS_READY_START_Msk | RADIO_SHORTS_ADDRESS_RSSISTART_Msk;
+        static constexpr uint32_t TxShorts = RADIO_SHORTS_READY_START_Msk | RADIO_SHORTS_END_DISABLE_Msk;
+        static constexpr uint32_t DataWhiteIvReadbackBit = 1U << 6;
+    };
 
-/** ADV チャネル数 */
-#define ADV_CHANNEL_COUNT 3
+    struct Timing {
+        static constexpr uint32_t TimerPrescaler = 4;
+        static constexpr uint32_t InterChannelDelayUs = 150;
+        static constexpr uint32_t TxWaitLimit = 1000000;
+    };
+};
 
 /* ==================================================================
  * モジュール内部状態
  * ================================================================== */
 
-/** 受信バッファ (RADIO の DMA がここに直接書き込む) */
-static uint8_t s_rxBuffer[RX_BUFFER_SIZE] __attribute__((aligned(4)));
+/*
+ * RADIOのDMAバッファ、割り込みから更新される状態、Advertisingの
+ * デバッグ情報は、スキャン/送信の処理をまたいで保持する必要がある。
+ * これらは公開APIの状態ではなく、ハードウェア制御のためだけに必要な
+ * 実装内部状態なのでInnerStateにまとめ、管理対象を明示する。
+ */
+struct ScannerState {
+    /** 受信バッファ (RADIO の DMA がここに直接書き込む) */
+    uint8_t rxBuffer[BleConfig::Packet::RxBufferSize] __attribute__((aligned(4)));
+    volatile uint8_t currentChannelIndex;
+    volatile int active;
+    BLEArchOnAdvertiseCallback callback;
+    void *callbackArgument;
+};
 
-/** 現在スキャン中の ADV チャネルインデックス (0, 1, 2) */
-static volatile uint8_t s_currentChannelIndex;
+struct AdvertiserState {
+    /** 送信 PDU バッファ */
+    uint8_t txBuffer[BleConfig::Packet::TxBufferSize] __attribute__((aligned(4)));
+    uint8_t txBufferLength;
+    volatile int active;
+};
 
-/** スキャン動作中フラグ */
-static volatile int s_scanning;
+struct DebugState {
+    struct Counters {
+        volatile uint32_t timerInterruptCount;
+        volatile uint32_t advertiseEventCount;
+        volatile uint32_t txAttemptCount;
+        volatile uint32_t txCompleteCount;
+        volatile uint32_t txTimeoutCount;
+        volatile uint32_t txErrorCount;
+    } counters;
 
-/** 上位層への通知コールバック */
-static BLEArchOnAdvertiseCallback s_onAdvertise;
+    struct RadioSnapshot {
+        volatile uint32_t lastChannel;
+        volatile uint32_t lastFrequency;
+        volatile uint32_t lastRadioState;
+        volatile uint32_t lastRadioEvents;
+        volatile uint32_t lastCrcStatus;
+    } radio;
+};
 
-/** 送信 PDU バッファ */
-static uint8_t s_txBuffer[TX_BUFFER_SIZE] __attribute__((aligned(4)));
-static uint8_t s_txBufferLength;
+struct TimerState {
+    uint32_t advertiseIntervalMicroseconds;
+    utkernel::interrupt timer1Interrupt;
+};
 
-/** Advertisingデバッグカウンタ。ISRから更新するためvolatileにする。 */
-static volatile uint32_t s_timerInterruptCount;
-static volatile uint32_t s_advertiseEventCount;
-static volatile uint32_t s_txAttemptCount;
-static volatile uint32_t s_txCompleteCount;
-static volatile uint32_t s_txTimeoutCount;
-static volatile uint32_t s_txErrorCount;
-static volatile uint32_t s_lastChannel;
-static volatile uint32_t s_lastFrequency;
-static volatile uint32_t s_lastRadioState;
-static volatile uint32_t s_lastRadioEvents;
-static volatile uint32_t s_lastCrcStatus;
+struct InnerState {
+    ScannerState scanner;
+    AdvertiserState advertiser;
+    DebugState debug;
+    TimerState timer;
+};
 
-/** Advertising 動作中フラグ */
-static volatile int s_advertising;
-
-/** Advertising interval (μs) */
-static uint32_t s_advertiseIntervalMicroseconds;
+static InnerState s_state{};
 
 /* ==================================================================
  * 内部関数 (前方宣言)
@@ -122,8 +153,6 @@ static void advertise_timer_isr(uint32_t intno);
 static void snapshot_radio_status(void);
 static uint32_t radio_config_mismatch(void);
 
-static utkernel::interrupt s_timer1_interrupt;
-
 static inline void increment_counter(volatile uint32_t *counter) {
     uint32_t value = *counter;
     *counter = value + 1U;
@@ -134,10 +163,11 @@ static inline void increment_counter(volatile uint32_t *counter) {
  * ================================================================== */
 
 int32_t ble_arch_init(void) {
-    s_scanning = 0;
-    s_onAdvertise = NULL;
+    s_state.scanner.active = 0;
+    s_state.scanner.callback = NULL;
+    s_state.scanner.callbackArgument = NULL;
 
-    if (!s_timer1_interrupt.define(TIMER1_IRQn, advertise_timer_isr)) {
+    if (!s_state.timer.timer1Interrupt.define(TIMER1_IRQn, advertise_timer_isr)) {
         return -1;
     }
 
@@ -154,14 +184,16 @@ int32_t ble_arch_init(void) {
 int32_t ble_arch_scan_start(uint16_t interval_625us,
                             uint16_t window_625us,
                             int32_t is_passive,
-                            BLEArchOnAdvertiseCallback on_advertise) {
+                            BLEArchOnAdvertiseCallback on_advertise,
+                            void *argument) {
     (void)interval_625us;
     (void)window_625us;
     (void)is_passive;
 
-    s_onAdvertise = on_advertise;
-    s_scanning = 1;
-    s_currentChannelIndex = 0;
+    s_state.scanner.callback = on_advertise;
+    s_state.scanner.callbackArgument = argument;
+    s_state.scanner.active = 1;
+    s_state.scanner.currentChannelIndex = 0;
 
     set_radio_channel(0);
     start_radio_receive();
@@ -176,23 +208,24 @@ int32_t ble_arch_scan_start(uint16_t interval_625us,
 }
 
 int32_t ble_arch_scan_stop(void) {
-    s_scanning = 0;
+    s_state.scanner.active = 0;
 
     NVIC_DisableIRQ(RADIO_IRQn);
     NRF_RADIO->INTENCLR = RADIO_INTENCLR_END_Msk;
 
     disable_radio_and_wait();
 
-    s_onAdvertise = NULL;
+    s_state.scanner.callback = NULL;
+    s_state.scanner.callbackArgument = NULL;
     return 0;
 }
 
 int32_t ble_arch_advertise_set_pdu(const uint8_t *pdu, uint8_t pdu_length) {
-    if (pdu == NULL || pdu_length > TX_BUFFER_SIZE) {
+    if (pdu == NULL || pdu_length > BleConfig::Packet::TxBufferSize) {
         return -1;
     }
-    memcpy(s_txBuffer, pdu, pdu_length);
-    s_txBufferLength = pdu_length;
+    memcpy(s_state.advertiser.txBuffer, pdu, pdu_length);
+    s_state.advertiser.txBufferLength = pdu_length;
     return 0;
 }
 
@@ -201,19 +234,19 @@ int32_t ble_arch_get_advertise_debug_status(ble::AdvertiseDebugStatus *status) {
         return -1;
     }
 
-    status->timer_interrupt_count = s_timerInterruptCount;
-    status->advertise_event_count = s_advertiseEventCount;
-    status->tx_attempt_count = s_txAttemptCount;
-    status->tx_complete_count = s_txCompleteCount;
-    status->tx_timeout_count = s_txTimeoutCount;
-    status->tx_error_count = s_txErrorCount;
-    status->pdu_length = s_txBufferLength;
+    status->timer_interrupt_count = s_state.debug.counters.timerInterruptCount;
+    status->advertise_event_count = s_state.debug.counters.advertiseEventCount;
+    status->tx_attempt_count = s_state.debug.counters.txAttemptCount;
+    status->tx_complete_count = s_state.debug.counters.txCompleteCount;
+    status->tx_timeout_count = s_state.debug.counters.txTimeoutCount;
+    status->tx_error_count = s_state.debug.counters.txErrorCount;
+    status->pdu_length = s_state.advertiser.txBufferLength;
     status->timer_compare = NRF_TIMER1->CC[0];
-    status->last_channel = s_lastChannel;
-    status->last_frequency = s_lastFrequency;
-    status->last_radio_state = s_lastRadioState;
-    status->last_radio_events = s_lastRadioEvents;
-    status->last_crcstatus = s_lastCrcStatus;
+    status->last_channel = s_state.debug.radio.lastChannel;
+    status->last_frequency = s_state.debug.radio.lastFrequency;
+    status->last_radio_state = s_state.debug.radio.lastRadioState;
+    status->last_radio_events = s_state.debug.radio.lastRadioEvents;
+    status->last_crcstatus = s_state.debug.radio.lastCrcStatus;
 
     status->radio_power = NRF_RADIO->POWER;
     status->radio_frequency = NRF_RADIO->FREQUENCY;
@@ -251,32 +284,32 @@ int32_t ble_arch_get_advertise_debug_status(ble::AdvertiseDebugStatus *status) {
  * @param interval_625us  BLE Advertising Interval (0.625ms = 625μs 単位)
  */
 int32_t ble_arch_advertise_start(uint16_t interval_625us) {
-    s_timerInterruptCount = 0;
-    s_advertiseEventCount = 0;
-    s_txAttemptCount = 0;
-    s_txCompleteCount = 0;
-    s_txTimeoutCount = 0;
-    s_txErrorCount = 0;
+    s_state.debug.counters.timerInterruptCount = 0;
+    s_state.debug.counters.advertiseEventCount = 0;
+    s_state.debug.counters.txAttemptCount = 0;
+    s_state.debug.counters.txCompleteCount = 0;
+    s_state.debug.counters.txTimeoutCount = 0;
+    s_state.debug.counters.txErrorCount = 0;
 
-    s_advertising = 1;
+    s_state.advertiser.active = 1;
 
     /* NOTE: 0.625ms = 625μs なので interval_625us * 625 で μs に変換 */
-    s_advertiseIntervalMicroseconds = (uint32_t)interval_625us * 625;
+    s_state.timer.advertiseIntervalMicroseconds = (uint32_t)interval_625us * 625;
 
     /* 最初の Advertising Event をすぐに送信 */
     ConfigureRadioForTransmit();
-    increment_counter(&s_advertiseEventCount);
+    increment_counter(&s_state.debug.counters.advertiseEventCount);
     if (!transmit_advertising_event()) {
-        increment_counter(&s_txErrorCount);
+        increment_counter(&s_state.debug.counters.txErrorCount);
     }
 
-    start_advertise_timer(s_advertiseIntervalMicroseconds);
+    start_advertise_timer(s_state.timer.advertiseIntervalMicroseconds);
 
     return 0;
 }
 
 int32_t ble_arch_advertise_stop(void) {
-    s_advertising = 0;
+    s_state.advertiser.active = 0;
     stop_advertise_timer();
     disable_radio_and_wait();
     return 0;
@@ -310,20 +343,20 @@ extern "C" void RADIO_IRQHandler(void) {
         /*
          * 受信バッファの解析
          *
-         *   s_rxBuffer[0] = S0 (PDU Header 下位バイト)
+         *   s_state.scanner.rxBuffer[0] = S0 (PDU Header 下位バイト)
          *     bit[3:0] = PDU Type
          *     bit[6]   = TxAdd
-         *   s_rxBuffer[1] = LENGTH (payload バイト数)
-         *   s_rxBuffer[2] = S1 (RAM上の1byte。on-airでは2bit)
-         *   s_rxBuffer[3..] = Payload (AdvA 6B + AdvData 0-31B)
+         *   s_state.scanner.rxBuffer[1] = LENGTH (payload バイト数)
+         *   s_state.scanner.rxBuffer[2] = S1 (RAM上の1byte。on-airでは2bit)
+         *   s_state.scanner.rxBuffer[3..] = Payload (AdvA 6B + AdvData 0-31B)
          */
-        uint8_t pdu_header = s_rxBuffer[0];
-        uint8_t pdu_length = s_rxBuffer[1];
+        uint8_t pdu_header = s_state.scanner.rxBuffer[0];
+        uint8_t pdu_length = s_state.scanner.rxBuffer[1];
         uint8_t pdu_type = pdu_header & 0x0F;
         uint8_t tx_add = (pdu_header >> 6) & 0x01;
 
         /* payload の妥当性チェック (最低6B=AdvA, 最大37B=AdvA+AdvData) */
-        if (pdu_length < 6 || pdu_length > 37) {
+        if (pdu_length < 6 || pdu_length > BleConfig::Packet::MaxPayloadLength) {
             goto next_channel;
         }
 
@@ -331,11 +364,11 @@ extern "C" void RADIO_IRQHandler(void) {
         memset(&descriptor, 0, sizeof(descriptor));
 
         descriptor.address.type = tx_add ? ble::AddressType::Random : ble::AddressType::Public;
-        memcpy(descriptor.address.value, &s_rxBuffer[3], 6);
+        memcpy(descriptor.address.value, &s_state.scanner.rxBuffer[3], 6);
 
         uint8_t data_length = pdu_length - 6;
         descriptor.data_length = data_length;
-        descriptor.data = (data_length > 0) ? &s_rxBuffer[9] : NULL;
+        descriptor.data = (data_length > 0) ? &s_state.scanner.rxBuffer[9] : NULL;
 
         /* PDU Type → event_type 変換 */
         switch (pdu_type) {
@@ -354,18 +387,19 @@ extern "C" void RADIO_IRQHandler(void) {
          */
         descriptor.rssi = -(int8_t)NRF_RADIO->RSSISAMPLE;
 
-        if (s_onAdvertise != NULL) {
-            s_onAdvertise(&descriptor);
+        if (s_state.scanner.callback != NULL) {
+            s_state.scanner.callback(&descriptor, s_state.scanner.callbackArgument);
         }
     }
 
 next_channel:
-    if (!s_scanning) {
+    if (!s_state.scanner.active) {
         return;
     }
 
-    s_currentChannelIndex = (s_currentChannelIndex + 1) % ADV_CHANNEL_COUNT;
-    set_radio_channel(s_currentChannelIndex);
+    s_state.scanner.currentChannelIndex
+        = (s_state.scanner.currentChannelIndex + 1) % BleConfig::Advertising::ChannelCount;
+    set_radio_channel(s_state.scanner.currentChannelIndex);
     start_radio_receive();
 }
 
@@ -386,9 +420,9 @@ static void advertise_timer_isr(uint32_t intno) {
     }
     NRF_TIMER1->EVENTS_COMPARE[0] = 0;
 
-    increment_counter(&s_timerInterruptCount);
+    increment_counter(&s_state.debug.counters.timerInterruptCount);
 
-    if (!s_advertising) {
+    if (!s_state.advertiser.active) {
         return;
     }
 
@@ -399,9 +433,9 @@ static void advertise_timer_isr(uint32_t intno) {
      * 3ch 合計 ~1.2ms は Advertising Interval (通常 100ms+) に比べて十分短い。
      */
     ConfigureRadioForTransmit();
-    increment_counter(&s_advertiseEventCount);
+    increment_counter(&s_state.debug.counters.advertiseEventCount);
     if (!transmit_advertising_event()) {
-        increment_counter(&s_txErrorCount);
+        increment_counter(&s_state.debug.counters.txErrorCount);
     }
 }
 
@@ -424,32 +458,29 @@ static void ConfigureRadio(void) {
      * PCNF0: PDU レイアウト
      *   LFLEN=6 (LENGTH は 6bit), S0LEN=1 (1B), S1LEN=2 (予約ビット), PLEN=8bit
      */
-    NRF_RADIO->PCNF0 = (6 << RADIO_PCNF0_LFLEN_Pos) | (1 << RADIO_PCNF0_S0LEN_Pos) | (2 << RADIO_PCNF0_S1LEN_Pos)
-                       | (RADIO_PCNF0_PLEN_8bit << RADIO_PCNF0_PLEN_Pos);
+    NRF_RADIO->PCNF0 = BleConfig::Radio::Pcnf0;
 
     /*
      * PCNF1: ペイロード設定
      *   MAXLEN=37, BALEN=3, Little Endian, Data Whitening 有効
      */
-    NRF_RADIO->PCNF1 = (37 << RADIO_PCNF1_MAXLEN_Pos) | (0 << RADIO_PCNF1_STATLEN_Pos) | (3 << RADIO_PCNF1_BALEN_Pos)
-                       | (RADIO_PCNF1_ENDIAN_Little << RADIO_PCNF1_ENDIAN_Pos)
-                       | (RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos);
+    NRF_RADIO->PCNF1 = BleConfig::Radio::Pcnf1;
 
     /* Access Address (0x8E89BED6) を分割設定 */
-    NRF_RADIO->BASE0 = 0x89BED600;
-    NRF_RADIO->PREFIX0 = 0x0000008E;
+    NRF_RADIO->BASE0 = BleConfig::Advertising::AccessAddress << 8;
+    NRF_RADIO->PREFIX0 = BleConfig::Advertising::AccessAddress >> 24;
     NRF_RADIO->RXADDRESSES = RADIO_RXADDRESSES_ADDR0_Msk;
 
     /* CRC: 24bit, 多項式 x^24+x^10+x^9+x^6+x^4+x^3+x+1, 初期値 0x555555 */
-    NRF_RADIO->CRCCNF = (3 << RADIO_CRCCNF_LEN_Pos) | (RADIO_CRCCNF_SKIPADDR_Skip << RADIO_CRCCNF_SKIPADDR_Pos);
-    NRF_RADIO->CRCPOLY = 0x00065B;
-    NRF_RADIO->CRCINIT = 0x555555;
-    NRF_RADIO->TIFS = 150;
+    NRF_RADIO->CRCCNF = BleConfig::Radio::CrcCnf;
+    NRF_RADIO->CRCPOLY = BleConfig::Radio::CrcPoly;
+    NRF_RADIO->CRCINIT = BleConfig::Radio::CrcInit;
+    NRF_RADIO->TIFS = BleConfig::Radio::TifsUs;
 
-    NRF_RADIO->PACKETPTR = (uint32_t)s_rxBuffer;
+    NRF_RADIO->PACKETPTR = (uint32_t)s_state.scanner.rxBuffer;
 
     /* SHORTS: READY→START (自動受信開始), ADDRESS→RSSISTART (自動RSSI測定) */
-    NRF_RADIO->SHORTS = RADIO_SHORTS_READY_START_Msk | RADIO_SHORTS_ADDRESS_RSSISTART_Msk;
+    NRF_RADIO->SHORTS = BleConfig::Radio::RxShorts;
 }
 
 /**
@@ -457,13 +488,13 @@ static void ConfigureRadio(void) {
  * @param channel_index  0=ch37, 1=ch38, 2=ch39
  */
 static void set_radio_channel(uint8_t channel_index) {
-    NRF_RADIO->FREQUENCY = ADV_CHANNEL_FREQUENCY[channel_index];
-    NRF_RADIO->DATAWHITEIV = ADV_CHANNEL_NUMBER[channel_index];
+    NRF_RADIO->FREQUENCY = BleConfig::Advertising::ChannelFrequency[channel_index];
+    NRF_RADIO->DATAWHITEIV = BleConfig::Advertising::ChannelNumber[channel_index];
 }
 
 /** 受信を開始する (SHORTS READY→START で自動開始) */
 static void start_radio_receive(void) {
-    NRF_RADIO->PACKETPTR = (uint32_t)s_rxBuffer;
+    NRF_RADIO->PACKETPTR = (uint32_t)s_state.scanner.rxBuffer;
     NRF_RADIO->EVENTS_END = 0;
     NRF_RADIO->EVENTS_READY = 0;
     NRF_RADIO->EVENTS_ADDRESS = 0;
@@ -486,9 +517,9 @@ static void disable_radio_and_wait(void) {
  * SHORTS を TX 用に変更し、送信バッファを指す。
  */
 static void ConfigureRadioForTransmit(void) {
-    NRF_RADIO->SHORTS = RADIO_SHORTS_READY_START_Msk | RADIO_SHORTS_END_DISABLE_Msk;
+    NRF_RADIO->SHORTS = BleConfig::Radio::TxShorts;
     NRF_RADIO->TXADDRESS = 0;
-    NRF_RADIO->PACKETPTR = (uint32_t)s_txBuffer;
+    NRF_RADIO->PACKETPTR = (uint32_t)s_state.advertiser.txBuffer;
 }
 
 /**
@@ -498,16 +529,6 @@ static void ConfigureRadioForTransmit(void) {
  * 反映されているかを確認するための診断用チェックである。
  */
 static uint32_t radio_config_mismatch(void) {
-    constexpr uint32_t EXPECTED_PCNF0 = (6U << RADIO_PCNF0_LFLEN_Pos) | (1U << RADIO_PCNF0_S0LEN_Pos)
-                                        | (2U << RADIO_PCNF0_S1LEN_Pos)
-                                        | (RADIO_PCNF0_PLEN_8bit << RADIO_PCNF0_PLEN_Pos);
-    constexpr uint32_t EXPECTED_PCNF1 = (37U << RADIO_PCNF1_MAXLEN_Pos) | (3U << RADIO_PCNF1_BALEN_Pos)
-                                        | (RADIO_PCNF1_ENDIAN_Little << RADIO_PCNF1_ENDIAN_Pos)
-                                        | (RADIO_PCNF1_WHITEEN_Enabled << RADIO_PCNF1_WHITEEN_Pos);
-    constexpr uint32_t EXPECTED_CRCCNF
-        = (3U << RADIO_CRCCNF_LEN_Pos) | (RADIO_CRCCNF_SKIPADDR_Skip << RADIO_CRCCNF_SKIPADDR_Pos);
-    constexpr uint32_t EXPECTED_TX_SHORTS = RADIO_SHORTS_READY_START_Msk | RADIO_SHORTS_END_DISABLE_Msk;
-
     uint32_t mismatch = 0;
     if (NRF_RADIO->POWER != 1U)
         mismatch |= (1U << 0);
@@ -515,38 +536,41 @@ static uint32_t radio_config_mismatch(void) {
         mismatch |= (1U << 1);
     if (NRF_RADIO->TXPOWER != RADIO_TXPOWER_TXPOWER_Pos8dBm)
         mismatch |= (1U << 2);
-    if (NRF_RADIO->PCNF0 != EXPECTED_PCNF0)
+    if (NRF_RADIO->PCNF0 != BleConfig::Radio::Pcnf0)
         mismatch |= (1U << 3);
-    if (NRF_RADIO->PCNF1 != EXPECTED_PCNF1)
+    if (NRF_RADIO->PCNF1 != BleConfig::Radio::Pcnf1)
         mismatch |= (1U << 4);
-    if (NRF_RADIO->BASE0 != 0x89BED600U)
+    if (NRF_RADIO->BASE0 != (BleConfig::Advertising::AccessAddress << 8))
         mismatch |= (1U << 5);
-    if (NRF_RADIO->PREFIX0 != 0x0000008EU)
+    if (NRF_RADIO->PREFIX0 != (BleConfig::Advertising::AccessAddress >> 24))
         mismatch |= (1U << 6);
     if (NRF_RADIO->RXADDRESSES != RADIO_RXADDRESSES_ADDR0_Msk)
         mismatch |= (1U << 7);
-    if (NRF_RADIO->CRCCNF != EXPECTED_CRCCNF)
+    if (NRF_RADIO->CRCCNF != BleConfig::Radio::CrcCnf)
         mismatch |= (1U << 8);
-    if (NRF_RADIO->CRCPOLY != 0x00065BU)
+    if (NRF_RADIO->CRCPOLY != BleConfig::Radio::CrcPoly)
         mismatch |= (1U << 9);
-    if (NRF_RADIO->CRCINIT != 0x00555555U)
+    if (NRF_RADIO->CRCINIT != BleConfig::Radio::CrcInit)
         mismatch |= (1U << 10);
-    if (NRF_RADIO->TIFS != 150U)
+    if (NRF_RADIO->TIFS != BleConfig::Radio::TifsUs)
         mismatch |= (1U << 11);
 
-    if (s_advertising) {
-        if (NRF_RADIO->SHORTS != EXPECTED_TX_SHORTS)
+    if (s_state.advertiser.active) {
+        if (NRF_RADIO->SHORTS != BleConfig::Radio::TxShorts)
             mismatch |= (1U << 12);
         if (NRF_RADIO->TXADDRESS != 0U)
             mismatch |= (1U << 13);
-        if (NRF_RADIO->PACKETPTR != (uint32_t)s_txBuffer)
+        if (NRF_RADIO->PACKETPTR != (uint32_t)s_state.advertiser.txBuffer)
             mismatch |= (1U << 14);
 
-        const uint8_t channel = (s_lastChannel < ADV_CHANNEL_COUNT) ? static_cast<uint8_t>(s_lastChannel) : 0;
-        if (NRF_RADIO->FREQUENCY != ADV_CHANNEL_FREQUENCY[channel])
+        const uint8_t channel = (s_state.debug.radio.lastChannel < BleConfig::Advertising::ChannelCount)
+                                    ? static_cast<uint8_t>(s_state.debug.radio.lastChannel)
+                                    : 0;
+        if (NRF_RADIO->FREQUENCY != BleConfig::Advertising::ChannelFrequency[channel])
             mismatch |= (1U << 15);
         /* DATAWHITEIV bit 6 is read back as 1 by the nRF52 hardware. */
-        const uint32_t expected_white_iv = ADV_CHANNEL_NUMBER[channel] | (1U << 6);
+        const uint32_t expected_white_iv
+            = BleConfig::Advertising::ChannelNumber[channel] | BleConfig::Radio::DataWhiteIvReadbackBit;
         if (NRF_RADIO->DATAWHITEIV != expected_white_iv)
             mismatch |= (1U << 16);
     }
@@ -559,13 +583,10 @@ static uint32_t radio_config_mismatch(void) {
  * @param channel_index  0=ch37, 1=ch38, 2=ch39
  */
 static bool transmit_on_channel(uint8_t channel_index) {
-    /* BLE 1Mbitの送信完了は通常数百us以内。異常時の無限停止を防ぐ。 */
-    static constexpr uint32_t TX_WAIT_LIMIT = 1000000;
-
     set_radio_channel(channel_index);
-    s_lastChannel = channel_index;
-    s_lastFrequency = NRF_RADIO->FREQUENCY;
-    increment_counter(&s_txAttemptCount);
+    s_state.debug.radio.lastChannel = channel_index;
+    s_state.debug.radio.lastFrequency = NRF_RADIO->FREQUENCY;
+    increment_counter(&s_state.debug.counters.txAttemptCount);
 
     /* 前回送信のイベントを残さず、今回の送信結果だけを記録する。 */
     NRF_RADIO->EVENTS_READY = 0;
@@ -577,12 +598,12 @@ static bool transmit_on_channel(uint8_t channel_index) {
 
     /* NOTE: DISABLED を待つ = 1パケット送信完了 (通常 ~400μs) */
     uint32_t wait_count = 0;
-    while (NRF_RADIO->EVENTS_DISABLED == 0 && wait_count++ < TX_WAIT_LIMIT) {
+    while (NRF_RADIO->EVENTS_DISABLED == 0 && wait_count++ < BleConfig::Timing::TxWaitLimit) {
         /* busy wait */
     }
 
     if (NRF_RADIO->EVENTS_DISABLED == 0) {
-        increment_counter(&s_txTimeoutCount);
+        increment_counter(&s_state.debug.counters.txTimeoutCount);
         snapshot_radio_status();
         NRF_RADIO->TASKS_DISABLE = 1;
         return false;
@@ -590,17 +611,17 @@ static bool transmit_on_channel(uint8_t channel_index) {
 
     snapshot_radio_status();
     NRF_RADIO->EVENTS_DISABLED = 0;
-    increment_counter(&s_txCompleteCount);
+    increment_counter(&s_state.debug.counters.txCompleteCount);
     return true;
 }
 
 /** 送信完了直後またはタイムアウト時のRADIO状態を保存する。 */
 static void snapshot_radio_status(void) {
-    s_lastRadioState = NRF_RADIO->STATE;
-    s_lastRadioEvents = (NRF_RADIO->EVENTS_READY ? 0x01U : 0U) | (NRF_RADIO->EVENTS_END ? 0x02U : 0U)
+    s_state.debug.radio.lastRadioState = NRF_RADIO->STATE;
+    s_state.debug.radio.lastRadioEvents = (NRF_RADIO->EVENTS_READY ? 0x01U : 0U) | (NRF_RADIO->EVENTS_END ? 0x02U : 0U)
                         | (NRF_RADIO->EVENTS_DISABLED ? 0x04U : 0U) | (NRF_RADIO->EVENTS_ADDRESS ? 0x08U : 0U)
                         | (NRF_RADIO->EVENTS_PAYLOAD ? 0x10U : 0U);
-    s_lastCrcStatus = NRF_RADIO->CRCSTATUS;
+    s_state.debug.radio.lastCrcStatus = NRF_RADIO->CRCSTATUS;
 }
 
 /**
@@ -611,12 +632,12 @@ static bool transmit_advertising_event(void) {
     if (!transmit_on_channel(0)) {
         return false;
     }
-    delay_microseconds(150);
+    delay_microseconds(BleConfig::Timing::InterChannelDelayUs);
 
     if (!transmit_on_channel(1)) {
         return false;
     }
-    delay_microseconds(150);
+    delay_microseconds(BleConfig::Timing::InterChannelDelayUs);
 
     return transmit_on_channel(2);
 }
@@ -627,7 +648,7 @@ static void delay_microseconds(uint32_t microseconds) {
     NRF_TIMER0->TASKS_CLEAR = 1;
     NRF_TIMER0->MODE = TIMER_MODE_MODE_Timer;
     NRF_TIMER0->BITMODE = TIMER_BITMODE_BITMODE_16Bit;
-    NRF_TIMER0->PRESCALER = 4; /* 16MHz / 2^4 = 1MHz */
+    NRF_TIMER0->PRESCALER = BleConfig::Timing::TimerPrescaler; /* 16MHz / 2^4 = 1MHz */
     NRF_TIMER0->CC[0] = microseconds;
     NRF_TIMER0->SHORTS = 0;
     NRF_TIMER0->EVENTS_COMPARE[0] = 0;
@@ -644,7 +665,7 @@ static void delay_microseconds(uint32_t microseconds) {
  * 1MHz (1μs分解能) で動作する 32bit タイマーを使用する。
  */
 static void start_advertise_timer(uint32_t interval_microseconds) {
-    if (!s_timer1_interrupt.defined()) {
+    if (!s_state.timer.timer1Interrupt.defined()) {
         return;
     }
 
@@ -653,14 +674,14 @@ static void start_advertise_timer(uint32_t interval_microseconds) {
 
     NRF_TIMER1->MODE = TIMER_MODE_MODE_Timer;
     NRF_TIMER1->BITMODE = TIMER_BITMODE_BITMODE_32Bit;
-    NRF_TIMER1->PRESCALER = 4; /* NOTE: 16MHz / 2^4 = 1MHz */
+    NRF_TIMER1->PRESCALER = BleConfig::Timing::TimerPrescaler; /* NOTE: 16MHz / 2^4 = 1MHz */
 
     NRF_TIMER1->CC[0] = interval_microseconds;
     NRF_TIMER1->SHORTS = TIMER_SHORTS_COMPARE0_CLEAR_Msk;
     NRF_TIMER1->INTENSET = TIMER_INTENSET_COMPARE0_Msk;
 
     ClearInt(TIMER1_IRQn);
-    s_timer1_interrupt.enable(6);
+    s_state.timer.timer1Interrupt.enable(6);
 
     NRF_TIMER1->TASKS_START = 1;
 }
@@ -669,6 +690,6 @@ static void start_advertise_timer(uint32_t interval_microseconds) {
 static void stop_advertise_timer(void) {
     NRF_TIMER1->TASKS_STOP = 1;
     NRF_TIMER1->INTENCLR = TIMER_INTENCLR_COMPARE0_Msk;
-    s_timer1_interrupt.disable();
+    s_state.timer.timer1Interrupt.disable();
     ClearInt(TIMER1_IRQn);
 }

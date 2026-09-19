@@ -19,7 +19,7 @@ void run_fs_test(Context &context) {
     LOG_I("fs_init: %ld", init_result);
     context.assert_true(init_result == 0, "fs_init");
 
-    auto log_name = context.config.file_system.get_name(fs::FileId::Log);
+    auto log_name = context.config.file_system.get_name(fs::FileId::LogRing);
     LOG_I("file[0] name: %s", log_name ? *log_name : "(null)");
     context.assert_true(log_name.has_value(), "fs::get_name(LOG)");
 
@@ -40,13 +40,13 @@ void run_fs_test(Context &context) {
     LOG_I("read back: 0x%lx (size=%lu)", read_val, static_cast<uint32_t>(read_sz));
     context.assert_true(read_sz == sizeof(test_val) && read_val == test_val, "fs_block_read matches");
 
-    context.config.file_system.erase(fs::FileId::Log);
+    context.config.file_system.erase(fs::FileId::LogRing);
     const char msg[] = "hello";
-    auto append_result = context.config.file_system.append(fs::FileId::Log, msg, sizeof(msg));
+    auto append_result = context.config.file_system.append(fs::FileId::LogRing, msg, sizeof(msg));
     context.assert_true(append_result.has_value(), "fs_append");
 
     char read_buf[16] = {};
-    auto stream_sz = context.config.file_system.read(fs::FileId::Log, 0, read_buf, sizeof(read_buf));
+    auto stream_sz = context.config.file_system.read(fs::FileId::LogRing, 0, read_buf, sizeof(read_buf));
     LOG_I("stream read: \"%s\" (size=%lu)", read_buf, static_cast<uint32_t>(stream_sz));
     context.assert_true(stream_sz >= sizeof(msg) && std::memcmp(read_buf, msg, sizeof(msg)) == 0, "fs_read matches");
 }

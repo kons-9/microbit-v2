@@ -7,7 +7,7 @@
 
 #include <utkernel/task>
 
-extern "C" int usermain(void) {
+extern "C" int app_main(void) {
     if (!app::task::EntryTask::instance().start()) {
         return -1;
     }

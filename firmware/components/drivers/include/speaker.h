@@ -34,7 +34,11 @@ class Speaker {
     bool is_playing() const;
 
   private:
-    bool m_playing = false;
+    struct InnerState {
+        bool playing = false;
+    };
+
+    InnerState m_state;
 };
 
 }  // namespace drivers

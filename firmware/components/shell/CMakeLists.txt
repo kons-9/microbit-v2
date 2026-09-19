@@ -4,6 +4,7 @@ add_library(shell STATIC)
 
 target_sources(shell PRIVATE
     src/shell.cpp
+    src/file_commands.cpp
 )
 
 target_include_directories(shell

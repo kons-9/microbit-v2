@@ -4,204 +4,84 @@
  */
 
 #include "shell.h"
-#include "fs.h"
 #include "io_stream.h"
 
-#include <cstring>
-#include <cstdio>
 #include <cstdarg>
+#include <cstdio>
+#include <cstring>
 
 namespace shell {
-
-/* ================================================================== */
-/*  Constants                                                         */
-/* ================================================================== */
-
-static constexpr size_t LINE_BUF_SIZE = 128;
-static constexpr size_t MAX_ARGS = 8;
-static constexpr char PROMPT[] = "> ";
-
-/* ================================================================== */
-/*  State                                                             */
-/* ================================================================== */
-
-static char s_lineBuf[LINE_BUF_SIZE];
-static size_t s_linePos = 0;
-
-static const Command *s_extraCmds = nullptr;
-static uint8_t s_extraCount = 0;
-static io::Stream *s_stream = nullptr;
-static fs::FileSystem *s_file_system = nullptr;
-static Mode s_mode = Mode::ReadWrite;
 
 /* ================================================================== */
 /*  Output helpers                                                    */
 /* ================================================================== */
 
-void puts(const char *str) {
-    if (s_stream != nullptr && str != nullptr) {
-        s_stream->write(reinterpret_cast<const uint8_t *>(str), std::strlen(str));
+void Shell::puts(const char *str) {
+    if (stream_ != nullptr && str != nullptr) {
+        stream_->write(reinterpret_cast<const uint8_t *>(str), std::strlen(str));
     }
 }
 
-void printf(const char *fmt, ...) {
-    char buf[256];
+void Shell::vprintf(const char *fmt, va_list ap) {
+    if (stream_ == nullptr || fmt == nullptr) {
+        return;
+    }
+
+    int len = std::vsnprintf(format_buf_, sizeof(format_buf_), fmt, ap);
+    if (len <= 0) {
+        return;
+    }
+
+    size_t write_len = static_cast<size_t>(len);
+    if (write_len >= sizeof(format_buf_)) {
+        write_len = sizeof(format_buf_) - 1;
+    }
+    stream_->write(reinterpret_cast<const uint8_t *>(format_buf_), write_len);
+}
+
+void Shell::printf(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
-    int len = vsnprintf(buf, sizeof(buf), fmt, ap);
+    vprintf(fmt, ap);
     va_end(ap);
-    if (len > 0 && s_stream != nullptr) {
-        s_stream->write(reinterpret_cast<const uint8_t *>(buf), static_cast<size_t>(len));
-    }
 }
 
 /* ================================================================== */
 /*  Built-in commands                                                 */
 /* ================================================================== */
 
-static void cmd_help(int32_t argc, const char *const *argv);
-static void cmd_ls(int32_t argc, const char *const *argv);
-static void cmd_cat(int32_t argc, const char *const *argv);
-static void cmd_erase(int32_t argc, const char *const *argv);
-
-static const Command BUILTIN_CMDS[] = {
-    {"help", "Show available commands", cmd_help},
-    {"ls", "List flash files", cmd_ls},
-    {"cat", "cat <file> [--hex] - Read file", cmd_cat},
-    {"erase", "erase <file> - Erase file", cmd_erase},
-};
-
-static constexpr uint8_t BUILTIN_COUNT = static_cast<uint8_t>(sizeof(BUILTIN_CMDS) / sizeof(BUILTIN_CMDS[0]));
-
-static void cmd_help(int32_t /*argc*/, const char *const * /*argv*/) {
+void Shell::cmd_help() {
     puts("Commands:\r\n");
-    for (uint8_t i = 0; i < BUILTIN_COUNT; ++i) {
-        if (s_mode == Mode::ReadOnly && std::strcmp(BUILTIN_CMDS[i].name, "erase") == 0) {
+    for (const auto &command : BUILTIN_COMMANDS) {
+        if (mode_ == Mode::ReadOnly && command.id == BuiltinId::Erase) {
             continue;
         }
-        printf("  %-8s %s\r\n", BUILTIN_CMDS[i].name, BUILTIN_CMDS[i].help);
+        printf("  %-8s %s\r\n", command.name, command.help);
     }
-    for (uint8_t i = 0; i < s_extraCount; ++i) {
-        printf("  %-8s %s\r\n", s_extraCmds[i].name, s_extraCmds[i].help);
-    }
-}
-
-static void cmd_ls(int32_t /*argc*/, const char *const * /*argv*/) {
-    printf("%-10s %6s/%6s  %s\r\n", "NAME", "USED", "CAP", "TYPE");
-    for (size_t i = 0; i < static_cast<size_t>(fs::FileId::Count); ++i) {
-        fs::FileInfo info;
-        if (s_file_system != nullptr && s_file_system->get_info(static_cast<fs::FileId>(i), &info)) {
-            const char *type_str = (info.type == fs::FileType::RingBuffer) ? "ring" : "fixed";
-            printf("%-10s %6lu/%6lu  [%s]\r\n",
-                   info.name,
-                   static_cast<unsigned long>(info.used),
-                   static_cast<unsigned long>(info.capacity),
-                   type_str);
-        }
+    for (uint8_t i = 0; i < extra_count_; ++i) {
+        printf("  %-8s %s\r\n", extra_cmds_[i].name, extra_cmds_[i].help);
     }
 }
 
-static void cmd_cat(int32_t argc, const char *const *argv) {
-    if (argc < 2) {
-        puts("Usage: cat <file> [--hex]\r\n");
-        return;
+void Shell::run_builtin(BuiltinId id, int32_t argc, const char *const *argv) {
+    switch (id) {
+    case BuiltinId::Help: cmd_help(); break;
+    case BuiltinId::List: cmd_ls(); break;
+    case BuiltinId::Cat: cmd_cat(argc, argv); break;
+    case BuiltinId::Erase: cmd_erase(argc, argv); break;
     }
-
-    if (s_file_system == nullptr) {
-        puts("File system is not initialized\r\n");
-        return;
-    }
-
-    auto id = s_file_system->find_by_name(argv[1]);
-    if (!id) {
-        printf("Unknown file: %s\r\n", argv[1]);
-        return;
-    }
-
-    bool hex_mode = false;
-    if (argc >= 3 && std::strcmp(argv[2], "--hex") == 0) {
-        hex_mode = true;
-    }
-
-    fs::FileInfo info;
-    s_file_system->get_info(*id, &info);
-
-    // 256バイトずつ読み出し
-    uint8_t buf[256];
-    uint32_t offset = 0;
-    uint32_t total = info.used;
-
-    while (offset < total) {
-        size_t chunk = sizeof(buf);
-        if (offset + chunk > total) {
-            chunk = total - offset;
-        }
-
-        size_t read_len = 0;
-        if (info.type == fs::FileType::RingBuffer) {
-            read_len = s_file_system->read(*id, offset, buf, chunk);
-        } else {
-            read_len = s_file_system->block_read(*id, offset, buf, chunk);
-        }
-
-        if (read_len == 0) {
-            break;
-        }
-
-        if (hex_mode) {
-            for (size_t i = 0; i < read_len; ++i) {
-                if (i % 16 == 0) {
-                    printf("%08lX: ", static_cast<unsigned long>(offset + i));
-                }
-                printf("%02X ", buf[i]);
-                if (i % 16 == 15 || i == read_len - 1) {
-                    puts("\r\n");
-                }
-            }
-        } else {
-            if (s_stream != nullptr) {
-                s_stream->write(buf, read_len);
-            }
-        }
-
-        offset += static_cast<uint32_t>(read_len);
-    }
-    puts("\r\n");
-}
-
-static void cmd_erase(int32_t argc, const char *const *argv) {
-    if (argc < 2) {
-        puts("Usage: erase <file>\r\n");
-        return;
-    }
-
-    if (s_file_system == nullptr) {
-        puts("File system is not initialized\r\n");
-        return;
-    }
-
-    auto id = s_file_system->find_by_name(argv[1]);
-    if (!id) {
-        printf("Unknown file: %s\r\n", argv[1]);
-        return;
-    }
-
-    s_file_system->erase(*id);
-    puts("OK\r\n");
 }
 
 /* ================================================================== */
 /*  Line parsing & dispatch                                           */
 /* ================================================================== */
 
-static void dispatch_line(void) {
-    // 引数分割
+void Shell::dispatch_line() {
     const char *args[MAX_ARGS] = {};
     int32_t argc = 0;
 
-    char *p = s_lineBuf;
+    char *p = line_buf_;
     while (*p != '\0' && argc < static_cast<int32_t>(MAX_ARGS)) {
-        // スペースをスキップ
         while (*p == ' ') {
             ++p;
         }
@@ -209,7 +89,6 @@ static void dispatch_line(void) {
             break;
         }
         args[argc++] = p;
-        // トークン末尾まで進む
         while (*p != '\0' && *p != ' ') {
             ++p;
         }
@@ -222,19 +101,19 @@ static void dispatch_line(void) {
         return;
     }
 
-    // コマンド検索
-    for (uint8_t i = 0; i < BUILTIN_COUNT; ++i) {
-        if (s_mode == Mode::ReadOnly && std::strcmp(BUILTIN_CMDS[i].name, "erase") == 0) {
+    for (const auto &command : BUILTIN_COMMANDS) {
+        if (mode_ == Mode::ReadOnly && command.id == BuiltinId::Erase) {
             continue;
         }
-        if (std::strcmp(args[0], BUILTIN_CMDS[i].name) == 0) {
-            BUILTIN_CMDS[i].handler(argc, args);
+        if (std::strcmp(args[0], command.name) == 0) {
+            run_builtin(command.id, argc, args);
             return;
         }
     }
-    for (uint8_t i = 0; i < s_extraCount; ++i) {
-        if (std::strcmp(args[0], s_extraCmds[i].name) == 0) {
-            s_extraCmds[i].handler(argc, args);
+
+    for (uint8_t i = 0; i < extra_count_; ++i) {
+        if (std::strcmp(args[0], extra_cmds_[i].name) == 0) {
+            extra_cmds_[i].handler(*this, argc, args);
             return;
         }
     }
@@ -243,56 +122,73 @@ static void dispatch_line(void) {
 }
 
 /* ================================================================== */
-/*  Public API                                                        */
+/*  Shell methods                                                     */
 /* ================================================================== */
 
-void init(io::Stream &stream, fs::FileSystem &file_system, const Command *extra_cmds, uint8_t extra_count, Mode mode) {
-    s_stream = &stream;
-    s_file_system = &file_system;
-    s_extraCmds = extra_cmds;
-    s_extraCount = extra_count;
-    s_mode = mode;
-    s_linePos = 0;
+void Shell::init(io::Stream &stream,
+                 fs::FileSystem &file_system,
+                 const Command *extra_cmds,
+                 uint8_t extra_count,
+                 Mode mode) {
+    stream_ = &stream;
+    file_system_ = &file_system;
+    extra_cmds_ = extra_cmds;
+    extra_count_ = extra_count;
+    mode_ = mode;
+    line_pos_ = 0;
+    ignore_lf_ = false;
     puts(PROMPT);
 }
 
-void feed_char(char ch) {
+void Shell::feed_char(char ch) {
+    if (ch == '\r') {
+        ignore_lf_ = true;
+    } else if (ch == '\n') {
+        if (ignore_lf_) {
+            ignore_lf_ = false;
+            return;
+        }
+        ignore_lf_ = false;
+    } else {
+        ignore_lf_ = false;
+    }
+
     if (ch == '\r' || ch == '\n') {
         puts("\r\n");
-        s_lineBuf[s_linePos] = '\0';
+        line_buf_[line_pos_] = '\0';
         dispatch_line();
-        s_linePos = 0;
+        line_pos_ = 0;
         puts(PROMPT);
         return;
     }
 
-    // Backspace
     if (ch == '\b' || ch == 0x7F) {
-        if (s_linePos > 0) {
-            --s_linePos;
+        if (line_pos_ > 0) {
+            --line_pos_;
             puts("\b \b");
         }
         return;
     }
 
-    // 通常文字
-    if (s_linePos < LINE_BUF_SIZE - 1) {
-        s_lineBuf[s_linePos++] = ch;
-        // エコー
-        if (s_stream != nullptr) {
-            s_stream->write(reinterpret_cast<const uint8_t *>(&ch), 1);
+    if (line_pos_ < LINE_BUF_SIZE - 1) {
+        line_buf_[line_pos_++] = ch;
+        if (stream_ != nullptr) {
+            stream_->write(reinterpret_cast<const uint8_t *>(&ch), 1);
         }
     }
 }
 
-void poll(void) {
-    if (s_stream == nullptr) {
+void Shell::poll() {
+    if (stream_ == nullptr) {
         return;
     }
-    uint8_t buf[32];
-    int32_t len = s_stream->read(buf, sizeof(buf), 0);
+
+    int32_t len = stream_->read(rx_buf_, sizeof(rx_buf_), 0);
+    if (len <= 0) {
+        return;
+    }
     for (int32_t i = 0; i < len; ++i) {
-        feed_char(static_cast<char>(buf[i]));
+        feed_char(static_cast<char>(rx_buf_[i]));
     }
 }
 

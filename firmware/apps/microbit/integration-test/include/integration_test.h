@@ -2,6 +2,7 @@
 
 #include "flash.h"
 #include "fs.h"
+#include "shell.h"
 #include "uart.h"
 
 #include <cstdint>
@@ -26,6 +27,7 @@ struct Config {
 struct Context {
     Drivers drivers;
     Config config;
+    shell::Shell shell;
     uint32_t pass_count = 0;
     uint32_t fail_count = 0;
 

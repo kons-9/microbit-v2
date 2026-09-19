@@ -2,7 +2,7 @@
 
 micro:bit v2.2 (nRF52833) の各種ハードウェアドライバと BLE GAP 層。
 
-ハードウェアドライバは `namespace drivers` 内にクラスとして定義され、BLE API は `namespace ble` として提供される。
+ハードウェアドライバは `namespace drivers` 内にクラスとして定義され、BLEのデータ型は `namespace ble`、操作APIは `drivers::Ble` として提供される。
 
 ---
 

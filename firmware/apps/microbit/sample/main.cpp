@@ -19,6 +19,7 @@
  */
 void tsk1(void *) {
     TM_PUTSTRING((UB *)"Hello Task-1\n");
+    utkernel::task::sleep_forever();
 }
 
 /* ----------------------------------------------------------
@@ -26,6 +27,7 @@ void tsk1(void *) {
  */
 void tsk2(void *) {
     TM_PUTSTRING((UB *)"Hello Task-2\n");
+    utkernel::task::sleep_forever();
 }
 
 static utkernel::task s_task1;
