@@ -1,0 +1,42 @@
+#pragma once
+
+/**
+ * @file eventflag
+ * @brief OSAL EventFlag — イベントフラグ
+ */
+
+#include <cstdint>
+
+namespace utkernel {
+
+class event_flag {
+public:
+    enum class wait_mode : uint32_t {
+        Any = 0x01,
+        All = 0x00,
+    };
+
+    explicit event_flag(uint32_t initial = 0);
+    ~event_flag();
+
+    event_flag(const event_flag &) = delete;
+    event_flag &operator=(const event_flag &) = delete;
+
+    void set(uint32_t bits);
+    void clear(uint32_t bits);
+    uint32_t wait(uint32_t pattern, wait_mode mode, uint32_t timeout_ms = UINT32_MAX);
+    uint32_t get() const;
+
+private:
+    alignas(8) unsigned char m_storage[128];
+};
+
+}  // namespace utkernel
+
+#if defined(UTKERNEL_ARCH_linux)
+#include "arch/linux/eventflag_impl.hpp"
+#elif defined(UTKERNEL_ARCH_microbit)
+#include "arch/microbit/eventflag_impl.hpp"
+#else
+#error "UTKERNEL_ARCH not defined"
+#endif

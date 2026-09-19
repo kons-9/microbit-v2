@@ -1,47 +1,73 @@
 # BLE屋内位置推定
 
-Bluetooth Low Energy(BLE)の受信信号強度(RSSI)を収集し、
-外部AIで機械学習ベースの位置推定を行う屋内測位アプリケーション。
-firmwareはwsl前提。
+Bluetooth Low Energy (BLE) の受信信号強度 (RSSI) を収集し、屋内位置推定に利用するシステムです。
+micro:bit v2.2 (nRF52833) 上で μT-Kernel 3 とファームウェアを動かします。
 
-## build生成物
-buildは各コンポーネントごとにarchiveを作成する。
-BUILD_TYPEはDebug, Releaseを用意し、それぞれでディレクトリを作る。
-releaseはltoやO3でビルドする。どれだけ時間がかかっても構わない。
+## クイックスタート
 
-```zsh
-cmake -B build -DTARGET_ARCH=linux -DAPP_TARGET=main
-cmake --build build
+詳細な環境構築は [wsl.md](wsl.md)、ファームウェア固有の情報は [firmware/README.md](firmware/README.md) を参照してください。
+
+```bash
+# μT-Kernel 3 とサブモジュールを準備
+git submodule update --init --recursive
+cd firmware/kernel
+./setup.sh
+
+# メインアプリをビルド
+cd ..
+make build
+
+# Linux向けユニットテストを実行
+make test
 ```
 
-or 
+micro:bitへの書き込みには、別途 pyocd とデバッガのUSB接続が必要です。
 
-```zsh
-cmake -B build -DTARGET_ARCH=linux -DAPP_TARGET=factory-test
-cmake --build build
+```bash
+cd firmware
+make flash
 ```
 
-## テスト
+## 主なMakeターゲット
 
-各コンポーネントは `build_test` ディレクトリで単体テストをビルド・実行できる（linux のみ）。
+| コマンド | 内容 |
+|---|---|
+| `make build` | メインアプリをビルド |
+| `make build-recovery` | リカバリー用ファームウェアをビルド |
+| `make build-sample` | サンプルアプリをビルド |
+| `make build-integration-test` | 実機向け統合テストをビルド |
+| `make build-all` | すべてのファームウェアをビルド |
+| `make test` | Linux向けユニットテストを実行 |
+| `make test-<component>` | コンポーネント単位でテストを実行 |
+| `make format` | clang-format-18でソースを整形 |
+| `make flash` | メインアプリを書き込み |
+| `make flash-recovery` | リカバリー用ファームウェアを書き込み |
+| `make clean` | ビルド成果物を削除 |
 
-```zsh
-cd firmware/components/ble
-cmake -B build_test -DTARGET_ARCH=linux
-cmake --build build_test
-./build_test/ble/ble_test
-```
+デバッグビルドは `IS_DEBUG=1 make build` で作成できます。
 
-```zsh
-cd firmware/components/osal
-cmake -B build_test -DTARGET_ARCH=linux
-cmake --build build_test
-./build_test/osal/osal_test
-```
+## フォーマットとCI
 
-## フォーマット
+ローカルでソースを整形するには、`clang-format-18` をインストールして以下を実行します。
 
-```zsh
+```bash
 cd firmware
 make format
+```
+
+GitHub Actionsでは、`kernel`、`third_party`、ビルド生成物を除くC/C++ソースに対して、整形差分がないことをチェックします。
+
+## ディレクトリ構成
+
+```text
+ble-locator/
+├── firmware/       ファームウェア本体 (C/C++20, μT-Kernel 3)
+│   ├── apps/       micro:bit向けアプリケーション
+│   ├── components/ 共通ロジックとデバイスドライバ
+│   ├── kernel/     μT-Kernel 3
+│   ├── linker/     リンカスクリプト
+│   └── test/       Linux向けユニットテスト
+├── hooks/          Gitフック
+├── wsl.md          WSLセットアップ手順
+└── .github/        CI設定
 ```

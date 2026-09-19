@@ -1,9 +1,9 @@
-# component template
-## Linuxテスト
-cmake -B build/test -DTARGET_ARCH=linux
-cmake --build build/test
-ctest --test-dir build/test
+# Template コンポーネント
 
-## firmware（microbit）
-cmake -B build/fw -DTARGET_ARCH=microbit
-cmake --build build/fw
+新規コンポーネント作成時のテンプレート。このディレクトリをコピーして使用する。
+
+## テスト
+
+```bash
+cd firmware && make test-template
+```

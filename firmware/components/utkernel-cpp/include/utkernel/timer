@@ -1,0 +1,54 @@
+#pragma once
+
+/**
+ * @file timer
+ * @brief OSAL Timer — 周期/ワンショットタイマ
+ */
+
+#include <cstdint>
+
+namespace utkernel {
+
+class cyclic_timer {
+public:
+    using handler_t = void (*)(void *param);
+
+    cyclic_timer(handler_t handler, uint32_t interval_ms, void *param = nullptr);
+    ~cyclic_timer();
+
+    cyclic_timer(const cyclic_timer &) = delete;
+    cyclic_timer &operator=(const cyclic_timer &) = delete;
+
+    void start();
+    void stop();
+
+private:
+    alignas(8) unsigned char m_storage[128];
+};
+
+class oneshot_timer {
+public:
+    using handler_t = void (*)(void *param);
+
+    oneshot_timer(handler_t handler, void *param = nullptr);
+    ~oneshot_timer();
+
+    oneshot_timer(const oneshot_timer &) = delete;
+    oneshot_timer &operator=(const oneshot_timer &) = delete;
+
+    void start(uint32_t delay_ms);
+    void stop();
+
+private:
+    alignas(8) unsigned char m_storage[128];
+};
+
+}  // namespace utkernel
+
+#if defined(UTKERNEL_ARCH_linux)
+#include "arch/linux/timer_impl.hpp"
+#elif defined(UTKERNEL_ARCH_microbit)
+#include "arch/microbit/timer_impl.hpp"
+#else
+#error "UTKERNEL_ARCH not defined"
+#endif

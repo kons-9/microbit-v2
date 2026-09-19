@@ -1,5 +1,9 @@
 #include "template.h"
 
-int template_add(int a, int b) {
+namespace tmpl {
+
+int32_t add(int32_t a, int32_t b) {
     return a + b;
 }
+
+}  // namespace tmpl

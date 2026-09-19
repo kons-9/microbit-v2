@@ -8,3 +8,5 @@ firmware/erase-flash-done
 __pycache__/
 *.pyc
 venv
+
+.vscode/

@@ -9,6 +9,7 @@ if(TARGET_ARCH STREQUAL "microbit")
         ${NRFX_DIR}/drivers/src/nrfx_nvmc.c
         ${NRFX_DIR}/drivers/src/nrfx_pwm.c
         ${NRFX_DIR}/drivers/src/nrfx_saadc.c
+        ${NRFX_DIR}/drivers/src/nrfx_timer.c
         ${NRFX_DIR}/drivers/src/nrfx_twim.c
         ${NRFX_DIR}/drivers/src/nrfx_temp.c
         ${NRFX_DIR}/lib/nrfx_atomic.c
@@ -17,7 +18,7 @@ if(TARGET_ARCH STREQUAL "microbit")
 
     add_library(nrfx STATIC ${NRFX_SOURCES})
 
-    target_include_directories(nrfx PUBLIC
+    target_include_directories(nrfx SYSTEM PUBLIC
         ${NRFX_DIR}
         ${NRFX_DIR}/hal
         ${NRFX_DIR}/drivers

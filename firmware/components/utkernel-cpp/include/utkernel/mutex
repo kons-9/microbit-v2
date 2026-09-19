@@ -1,0 +1,48 @@
+#pragma once
+
+/**
+ * @file mutex
+ * @brief OSAL Mutex — 相互排他ロック
+ */
+
+#include <cstdint>
+
+namespace utkernel {
+
+class mutex {
+public:
+    mutex();
+    ~mutex();
+
+    mutex(const mutex &) = delete;
+    mutex &operator=(const mutex &) = delete;
+
+    void lock();
+    bool try_lock();
+    void unlock();
+
+private:
+    alignas(8) unsigned char m_storage[64];
+};
+
+template <class MutexT>
+class lock_guard {
+public:
+    explicit lock_guard(MutexT &m) : m_mtx(m) { m_mtx.lock(); }
+    ~lock_guard() { m_mtx.unlock(); }
+    lock_guard(const lock_guard &) = delete;
+    lock_guard &operator=(const lock_guard &) = delete;
+
+private:
+    MutexT &m_mtx;
+};
+
+}  // namespace utkernel
+
+#if defined(UTKERNEL_ARCH_linux)
+#include "arch/linux/mutex_impl.hpp"
+#elif defined(UTKERNEL_ARCH_microbit)
+#include "arch/microbit/mutex_impl.hpp"
+#else
+#error "UTKERNEL_ARCH not defined"
+#endif

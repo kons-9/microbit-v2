@@ -2,8 +2,8 @@
  * app.ld
  * Linker script for the main application (ble-locator)
  *
- * Placed in the Application slot: 0x00026000 - 0x0006DFFF (288 KB)
- * RAM: after SoftDevice reservation
+ * Placed in the Application slot: 0x00000000 - 0x0006DFFF (440 KB)
+ * SoftDevice is not used.
  */
 
 INCLUDE "memory_map.ld"
@@ -13,7 +13,7 @@ ENTRY(Reset_Handler)
 MEMORY
 {
   ROM (rx)  : ORIGIN = __app_slot_start, LENGTH = __app_slot_end - __app_slot_start
-  RAM (xrw) : ORIGIN = __softdevice_ram, LENGTH = __ram_start + __ram_size - __softdevice_ram
+  RAM (xrw) : ORIGIN = __ram_start, LENGTH = __ram_size
 }
 
 SECTIONS {
@@ -21,16 +21,47 @@ SECTIONS {
         . = ALIGN(8);
         __vector_org = .;
         *(.vector)
+    } >ROM
+
+    /* Keep the C runtime init prologue before application code. */
+    .init : {
+        KEEP(*(.init))
+    } >ROM
+
+    .text.app : {
         __start = .;
         *(.text)
         *(.text.*)
         *(.rodata)
         *(.rodata.*)
+
+        . = ALIGN(4);
+        PROVIDE_HIDDEN(__preinit_array_start = .);
+        KEEP(*(.preinit_array))
+        PROVIDE_HIDDEN(__preinit_array_end = .);
+
+        . = ALIGN(4);
+        PROVIDE_HIDDEN(__init_array_start = .);
+        KEEP(*(SORT(.init_array.*)))
+        KEEP(*(.init_array))
+        PROVIDE_HIDDEN(__init_array_end = .);
+
+        . = ALIGN(4);
+        PROVIDE_HIDDEN(__fini_array_start = .);
+        KEEP(*(SORT(.fini_array.*)))
+        KEEP(*(.fini_array))
+        PROVIDE_HIDDEN(__fini_array_end = .);
     } >ROM
+
+    /* Keep the C runtime fini epilogue paired with its prologue. */
+    .fini : {
+        KEEP(*(.fini))
+    } >ROM
+
     . = ALIGN(4);
     __data_org = .;
 
-    vector __softdevice_ram (NOLOAD) : {
+    vector __ram_start (NOLOAD) : {
         __vector_start = .;
         *(.data_vector)
         __vector_end = .;
@@ -55,5 +86,6 @@ SECTIONS {
         . = ALIGN(4);
         __bss_end = .;
         __end = .;
+        PROVIDE(end = .);
     } >RAM
 }

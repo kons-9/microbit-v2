@@ -14,12 +14,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-format-18
-      - name: check format
+      - name: check C/C++ format
+        shell: bash
         run: |
-          find firmware -name '*.cpp' -o -name '*.h' -o -name '*.c' \
-            | grep -v 'firmware/kernel/' \
-            | grep -v 'firmware/third_party/' \
-            | xargs clang-format-18 --dry-run --Werror
+          set -euo pipefail
+          find firmware -type f \
+            \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' \
+               -o -name '*.h' -o -name '*.hh' -o -name '*.hpp' \) \
+            -not -path '*/kernel/*' \
+            -not -path '*/third_party/*' \
+            -not -path '*/build/*' \
+            -print0 \
+            | xargs -0 -r clang-format-18 --dry-run --Werror
 
   build:
     runs-on: ubuntu-latest
@@ -40,8 +46,18 @@ jobs:
       - name: build main
         working-directory: ./firmware
         run: |
-          make build
-      - name: build updater
-        working-directory: ./firmware
+          make build-all
+
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: setup ubuntu
         run: |
-          make build-updater
+          sudo apt update
+          sudo apt install -y cmake build-essential
+      - name: run tests
+        working-directory: ./firmware
+        run: make test
