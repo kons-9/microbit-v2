@@ -1,0 +1,12 @@
+Channel-Diversity AI-EKF — robustness summary
+sigma=4dB, fast_fading_fraction=0.6, spatial_bias=3.0, 1.5 m/s, 10 Hz
+averaged over 6 seeds
+
+ p_outlier |                 AI-EKF (N=1, no diversity) |  AI-EKF + Channel Diversity (N=10, median)
+----------------------------------------------------------------------------------------------------
+      0.00 |                                      1.794 |                                      1.949
+      0.02 |                                      2.324 |                                      1.956
+      0.05 |                                      3.474 |                                      1.923
+      0.10 |                                      5.584 |                                      1.977
+      0.15 |                                      7.754 |                                      2.103
+      0.20 |                                      9.500 |                                      2.113
